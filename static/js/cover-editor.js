@@ -340,12 +340,14 @@
       var body = new FormData();
       body.append("final", blob, "capa.jpg");
       body.append("config", JSON.stringify(config));
-      if (chosenFile) body.append("background_file", chosenFile);
       if (chosenMedia) body.append("background_media", chosenMedia);
-      fetch(data.save_url, {
-        method: "POST",
-        body: body,
-        headers: { "X-CSRFToken": form.querySelector("[name=csrfmiddlewaretoken]").value }
+      Promise.resolve(chosenFile && window.roleflixCompress ? window.roleflixCompress(chosenFile) : chosenFile).then(function (background) {
+        if (background) body.append("background_file", background);
+        return fetch(data.save_url, {
+          method: "POST",
+          body: body,
+          headers: { "X-CSRFToken": form.querySelector("[name=csrfmiddlewaretoken]").value }
+        });
       }).then(function (response) {
         return response.json().then(function (result) {
           if (!response.ok) throw new Error(result.error);

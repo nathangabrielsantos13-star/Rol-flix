@@ -18,6 +18,13 @@ VIDEO_EXTENSIONS = {"mp4", "webm", "mov", "m4v"}
 MAX_PHOTO_SIZE = 20 * 1024 * 1024
 MAX_VIDEO_SIZE = 300 * 1024 * 1024
 
+def size_limit(limit):
+    """Na Vercel, nenhum arquivo passa do tamanho máximo de um envio."""
+    return min(limit, settings.ROLEFLIX_MAX_REQUEST_FILE or limit)
+
+def megabytes(size):
+    return f"{size // (1024 * 1024)} MB"
+
 def file_extension(name):
     return name.lower().rsplit(".", 1)[-1] if "." in name else ""
 
@@ -37,8 +44,8 @@ def is_valid_photo(uploaded):
 def check_image_upload(image):
     """Valida só arquivos novos: ao editar, o campo pode trazer a imagem já salva."""
     if isinstance(image, UploadedFile):
-        if image.size > MAX_PHOTO_SIZE:
-            raise forms.ValidationError("A foto passa do limite de 20 MB.")
+        if image.size > size_limit(MAX_PHOTO_SIZE):
+            raise forms.ValidationError(f"A foto passa do limite de {megabytes(size_limit(MAX_PHOTO_SIZE))}.")
         if file_extension(image.name) not in PHOTO_EXTENSIONS or not is_valid_photo(image):
             raise forms.ValidationError("Envie uma foto JPG, PNG, WEBP ou GIF.")
     return image
@@ -133,12 +140,12 @@ class MediaUploadForm(forms.Form):
         for f in files:
             ext = file_extension(f.name)
             if ext in VIDEO_EXTENSIONS:
-                if f.size > MAX_VIDEO_SIZE:
-                    raise forms.ValidationError(f"{f.name}: o vídeo passa do limite de 300 MB.")
+                if f.size > size_limit(MAX_VIDEO_SIZE):
+                    raise forms.ValidationError(f"{f.name}: o vídeo passa do limite de {megabytes(size_limit(MAX_VIDEO_SIZE))}.")
             elif ext not in PHOTO_EXTENSIONS or not is_valid_photo(f):
                 raise forms.ValidationError(f"{f.name}: envie fotos JPG, PNG, WEBP ou GIF, ou vídeos MP4, WEBM ou MOV.")
-            elif f.size > MAX_PHOTO_SIZE:
-                raise forms.ValidationError(f"{f.name}: a foto passa do limite de 20 MB.")
+            elif f.size > size_limit(MAX_PHOTO_SIZE):
+                raise forms.ValidationError(f"{f.name}: a foto passa do limite de {megabytes(size_limit(MAX_PHOTO_SIZE))}.")
         return files
 
 class TrailerForm(forms.Form):

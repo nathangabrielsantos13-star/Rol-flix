@@ -89,6 +89,7 @@ class MediaItem(models.Model):
     caption = models.CharField(max_length=180, blank=True)
     uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     created_at = models.DateTimeField(default=timezone.now)
+    size = models.PositiveBigIntegerField(default=0)  # Em bytes: mede o espaço usado sem consultar a loja de arquivos.
 
 class Trailer(models.Model):
     """Vídeo gerado a partir do álbum. O anterior só sai quando o novo fica pronto."""

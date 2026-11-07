@@ -16,6 +16,7 @@
 <meta name="apple-mobile-web-app-title" content="Rolêflix">
 <script src="{% static 'js/pwa.js' %}" defer></script>
 <script src="{% static 'js/nav.js' %}" defer></script>
+{% if serverless %}<script src="{% static 'js/serverless-upload.js' %}" data-max-upload="{{ max_request_file }}" defer></script>{% endif %}
 </head>
 <body>
 <script src="{% static 'js/intro.js' %}"></script>

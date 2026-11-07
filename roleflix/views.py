@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import shutil
 import tempfile
@@ -10,7 +11,8 @@ from django.contrib import messages
 from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-from django.db.models import Q
+from django.db import transaction
+from django.db.models import Q, Sum
 from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -24,6 +26,8 @@ from .forms import AlbumForm, AvatarForm, CollectionForm, MediaUploadForm, Profi
 from .models import Album, AlbumParticipant, AlbumView, Collection, CoverDesign, Favorite, FriendRequest, MediaItem, Notification, Profile, Ticket, Trailer
 from .places import search_places
 from .ranged import ranged_response
+
+logger = logging.getLogger(__name__)
 
 def ensure_profile(user):
     Profile.objects.get_or_create(user=user)
@@ -373,8 +377,8 @@ def my_collection(request, pk):
 @login_required
 def create_trailer(request, pk):
     album = get_object_or_404(Album, pk=pk, owner=request.user)
-    if settings.ROLEFLIX_DEMO:
-        messages.info(request, "Os trailers ficam desligados nesta demonstração.")
+    if settings.ROLEFLIX_SERVERLESS:
+        messages.info(request, "Os trailers ficam desligados neste servidor.")
         return redirect("album_detail", pk=pk)
     items = list(album.media.order_by("created_at", "pk"))
     if not items:
@@ -413,22 +417,40 @@ def download_trailer(request, pk):
     except FileNotFoundError:
         raise Http404
 
+def media_space_is_full():
+    if settings.ROLEFLIX_MAX_MEDIA_BYTES is not None:
+        return (MediaItem.objects.aggregate(total=Sum("size"))["total"] or 0) >= settings.ROLEFLIX_MAX_MEDIA_BYTES
+    return shutil.disk_usage(settings.DATA_DIR).free < settings.ROLEFLIX_MIN_FREE_DISK  # A pasta de mídia só nasce no primeiro envio.
+
+def save_media(request, album):
+    """Devolve a mensagem de erro, ou None se tudo foi guardado."""
+    if media_space_is_full():
+        return "O espaço do site está no limite. Tente novamente mais tarde."
+    form = MediaUploadForm(request.POST, request.FILES)
+    if not form.is_valid():
+        return next(iter(form.errors.values()))[0]
+    try:
+        with transaction.atomic():
+            for f in form.cleaned_data["files"]:
+                MediaItem.objects.create(album=album, file=f, kind=media_kind(f.name), caption=form.cleaned_data["caption"], uploaded_by=request.user, size=f.size)
+    except OSError:
+        logger.exception("Não foi possível guardar o arquivo enviado")
+        return "Não foi possível guardar o arquivo agora. Tente novamente mais tarde."
+    return None
+
 @login_required
 @require_POST
 def upload_media(request, pk):
     album = get_object_or_404(Album, pk=pk)
     if not can_view(album, request.user):
         return redirect("home")
-    if shutil.disk_usage(settings.DATA_DIR).free < settings.ROLEFLIX_MIN_FREE_DISK:  # A pasta de mídia só nasce no primeiro envio.
-        messages.error(request, "O espaço do site está no limite. Tente novamente mais tarde.")
-        return redirect("album_detail", pk=pk)
-    form = MediaUploadForm(request.POST, request.FILES)
-    if form.is_valid():
-        for f in form.cleaned_data["files"]:
-            MediaItem.objects.create(album=album, file=f, kind=media_kind(f.name), caption=form.cleaned_data["caption"], uploaded_by=request.user)
-        messages.success(request, "Memórias adicionadas!")
+    error = save_media(request, album)
+    if request.headers.get("X-Requested-With") == "fetch":  # O álbum sobe um arquivo por vez na Vercel.
+        return JsonResponse({"error": error}, status=400 if error else 200)
+    if error:
+        messages.error(request, error)
     else:
-        messages.error(request, next(iter(form.errors.values()))[0])
+        messages.success(request, "Memórias adicionadas!")
     return redirect("album_detail", pk=pk)
 
 @login_required
@@ -449,6 +471,10 @@ def download_album(request, pk):
     items = album.media.all()
     if not items:
         messages.error(request, "Este álbum ainda não tem fotos ou vídeos.")
+        return redirect("album_detail", pk=pk)
+    limit = settings.ROLEFLIX_MAX_REQUEST_FILE
+    if limit and items.aggregate(total=Sum("size"))["total"] > limit:
+        messages.error(request, "Este álbum é grande demais para baixar de uma vez aqui. Baixe as fotos uma a uma.")
         return redirect("album_detail", pk=pk)
     # Vai para o disco, não para a memória: um álbum pode ter vários vídeos grandes.
     archive = tempfile.TemporaryFile()
@@ -555,9 +581,15 @@ def protected_media(request, path):
     if album and not can_view(album, request.user):
         raise Http404
     try:
-        return ranged_response(request, field)
+        response = ranged_response(request, field)
     except FileNotFoundError:
         raise Http404
+    except OSError:
+        logger.exception("Não foi possível ler %s", path)
+        return HttpResponse(status=503)
+    if settings.ROLEFLIX_SERVERLESS:  # Só no navegador de quem pode ver: economiza a cota de transferência.
+        response["Cache-Control"] = "private, max-age=86400"
+    return response
 
 def get_friends(user):
     accepted = FriendRequest.objects.filter(status=FriendRequest.ACCEPTED).filter(Q(sender=user) | Q(receiver=user))

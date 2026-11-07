@@ -5,3 +5,5 @@ python-dotenv>=1.0
 imageio-ffmpeg>=0.5
 gunicorn>=23.0
 whitenoise>=6.6
+psycopg[binary]>=3.2
+vercel-blob>=0.5

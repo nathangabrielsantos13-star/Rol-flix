@@ -5,6 +5,8 @@
   input.addEventListener("change", function () {
     if (!input.files.length) return;
     input.closest("form").querySelector(".avatar-edit-label").textContent = "Enviando…";
-    input.form.submit();
+    (window.roleflixPrepare ? window.roleflixPrepare(input) : Promise.resolve()).then(function () {
+      input.form.submit();
+    });
   });
 })();

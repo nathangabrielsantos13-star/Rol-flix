@@ -38,7 +38,7 @@ def read_chunks(file, start, length):
 
 def ranged_response(request, field):
     file = field.open("rb")
-    size = field.size
+    size = file.file.size  # Já aberto: perguntar a field.size gastaria uma operação da loja de arquivos.
     wanted = parse_range(request.headers.get("Range", ""), size)
     if wanted is None:
         response = FileResponse(file)

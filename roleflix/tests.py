@@ -1,15 +1,20 @@
 import io
 import json
 import re
+import os
 import shutil
 import smtplib
+import subprocess
+import sys
 import tempfile
 import zipfile
 from datetime import date, datetime, timedelta
+from types import SimpleNamespace
 from unittest.mock import patch
 from urllib.error import URLError
 from urllib.parse import urlparse
 
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.messages import get_messages
 from django.contrib.staticfiles import finders
@@ -21,6 +26,8 @@ from django.test import TestCase, override_settings
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from PIL import Image
+
+from vercel.blob import sync as sdk_blob
 
 from . import accounts, covers, demo, homepage, tickets, trailers
 from .middleware import DemoSetupMiddleware
@@ -2533,7 +2540,7 @@ class DemonstracaoTests(Base):
         self.client.post("/demo/entrar/")
         self.assertEqual(Album.objects.count(), total)
 
-    @override_settings(ROLEFLIX_DEMO=True)
+    @override_settings(ROLEFLIX_SERVERLESS=True)
     def test_trailer_fica_desligado(self):
         album = self.album()
         foto = MediaItem.objects.create(album=album, kind="photo", uploaded_by=self.a, file=png("f.png"))
@@ -2667,7 +2674,7 @@ class RecuperarSenhaTests(Base):
         with patch("django.core.mail.backends.locmem.EmailBackend.send_messages", side_effect=OSError("sem conexão")):
             self.assertRedirects(self.pedir("ninguem@x.com"), "/accounts/password/reset/done/")
 
-    @override_settings(ROLEFLIX_DEMO=True)
+    @override_settings(ROLEFLIX_DEMO=True, ROLEFLIX_SERVERLESS=True)
     def test_demonstracao_avisa_quando_nao_envia_email(self):
         DemoSetupMiddleware.ready = True
         self.addCleanup(setattr, DemoSetupMiddleware, "ready", False)
@@ -2735,3 +2742,200 @@ class MensagemDeLoginTests(Base):
         r = self.client.post("/accounts/login/", {"login": "ana@x.com", "password": "errada"})
         self.assertFalse(r.context["user"].is_authenticated)
         self.assertContains(r, "errorlist")
+
+
+class LojaFalsa:
+    """Imita o SDK do Vercel Blob, com as exceções verdadeiras dele."""
+    BlobError = sdk_blob.BlobError
+    BlobNotFoundError = sdk_blob.BlobNotFoundError
+
+    def __init__(self):
+        self.files = {}
+        self.access = set()
+        self.falha = None
+
+    def put_blob(self, name, body, *, access, content_type=None):
+        if self.falha:
+            raise self.falha
+        assert name not in self.files, "O Blob recusa nomes repetidos."
+        self.access.add(access)
+        self.files[name] = (bytes(body), content_type)
+
+    def get_blob(self, name, *, access):
+        if self.falha:
+            raise self.falha
+        self.access.add(access)
+        if name not in self.files:
+            raise self.BlobNotFoundError(name)
+        return SimpleNamespace(body=self.files[name][0])
+
+    def head_blob(self, name):
+        if name not in self.files:
+            raise self.BlobNotFoundError(name)
+        return SimpleNamespace(size=len(self.files[name][0]))
+
+    def delete_blob(self, name):
+        self.files.pop(name, None)
+
+
+NUVEM_STORAGES = {
+    "default": {"BACKEND": "roleflix.storage.BlobStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+}
+
+
+@override_settings(STORAGES=NUVEM_STORAGES, ROLEFLIX_SERVERLESS=True, ROLEFLIX_MAX_REQUEST_FILE=4 * 1024 ** 2, ROLEFLIX_MAX_MEDIA_BYTES=900 * 1024 ** 2)
+class NuvemTests(Base):
+    def setUp(self):
+        super().setUp()
+        self.loja = LojaFalsa()
+        patcher = patch("roleflix.storage.blob", self.loja)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.client.force_login(self.a)
+
+    def enviar(self, album, arquivo):
+        return self.client.post(f"/album/{album.pk}/upload/", {"files": arquivo}, headers={"X-Requested-With": "fetch"})
+
+    def item(self, album=None, nome="foto.png"):
+        album = album or self.album()
+        self.assertEqual(self.enviar(album, png(nome)).status_code, 200)
+        return MediaItem.objects.get(album=album)
+
+    def test_envio_um_por_vez_guarda_na_loja_privada(self):
+        r = self.enviar(self.album(), png())
+        self.assertEqual(r.json(), {"error": None})
+        item = MediaItem.objects.get()
+        self.assertEqual(list(self.loja.files), [item.file.name])
+        self.assertEqual(self.loja.access, {"private"})
+        self.assertEqual(self.loja.files[item.file.name][1], "image/png")
+        self.assertEqual(item.size, len(self.loja.files[item.file.name][0]))
+
+    def test_mesmo_nome_nao_colide(self):
+        album = self.album()
+        self.enviar(album, png("igual.png"))
+        self.assertEqual(self.enviar(album, png("igual.png")).status_code, 200)
+        self.assertEqual(len(self.loja.files), 2)
+
+    def test_nome_gigante_cabe_no_banco(self):
+        self.assertEqual(self.enviar(self.album(), png("x" * 90 + ".png")).status_code, 200)
+        self.assertLessEqual(len(MediaItem.objects.get().file.name), 100)
+
+    def test_foto_continua_privada(self):
+        url = self.item().file.url
+        r = self.client.get(url)
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r["Cache-Control"], "private, max-age=86400")
+        self.client.force_login(self.c)
+        self.assertEqual(self.client.get(url).status_code, 404)
+        self.client.logout()
+        self.assertNotEqual(self.client.get(url).status_code, 200)
+
+    def test_participante_ve_e_o_endereco_nao_expoe_a_loja(self):
+        item = self.item(self.shared_album())
+        self.assertNotIn("blob.vercel-storage.com", item.file.url)
+        self.client.force_login(self.b)
+        self.assertEqual(b"".join(self.client.get(item.file.url).streaming_content), self.loja.files[item.file.name][0])
+
+    def test_arquivo_que_sumiu_da_404_e_loja_fora_do_ar_da_503(self):
+        item = self.item()
+        conteudo = self.loja.files.pop(item.file.name)
+        self.assertEqual(self.client.get(item.file.url).status_code, 404)
+        self.loja.files[item.file.name] = conteudo
+        self.loja.falha = sdk_blob.BlobStoreSuspendedError()
+        with self.assertLogs("roleflix.views", level="ERROR"):
+            self.assertEqual(self.client.get(item.file.url).status_code, 503)
+
+    def test_loja_bloqueada_no_envio_avisa_sem_erro_500(self):
+        self.loja.falha = sdk_blob.BlobStoreSuspendedError()
+        album = self.album()
+        with self.assertLogs("roleflix.views", level="ERROR"):
+            r = self.enviar(album, png())
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("Não foi possível guardar", r.json()["error"])
+        self.assertFalse(MediaItem.objects.exists())
+
+    def test_espaco_cheio_recusa_antes_de_gastar_a_loja(self):
+        album = self.album()
+        MediaItem.objects.create(album=album, file="album_media/a.jpg", kind=MediaItem.PHOTO, uploaded_by=self.a, size=900 * 1024 ** 2)
+        r = self.enviar(album, png())
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("espaço do site", r.json()["error"])
+        self.assertEqual(self.loja.files, {})
+
+    def test_limite_de_tamanho_por_arquivo(self):
+        album = self.album()
+        foto = SimpleUploadedFile("grande.png", png().read() + b"0" * (4 * 1024 ** 2), content_type="image/png")
+        self.assertIn("limite de 4 MB", self.enviar(album, foto).json()["error"])
+        video = SimpleUploadedFile("v.mp4", b"0" * (4 * 1024 ** 2 + 1), content_type="video/mp4")
+        self.assertIn("limite de 4 MB", self.enviar(album, video).json()["error"])
+        self.assertEqual(self.loja.files, {})
+
+    def test_formulario_sem_javascript_continua_funcionando(self):
+        album = self.album()
+        r = self.client.post(f"/album/{album.pk}/upload/", {"files": png()})
+        self.assertRedirects(r, f"/album/{album.pk}/", fetch_redirect_response=False)
+        self.assertEqual(MediaItem.objects.count(), 1)
+
+    def test_album_grande_nao_tenta_gerar_zip_acima_do_limite(self):
+        item = self.item()
+        MediaItem.objects.filter(pk=item.pk).update(size=5 * 1024 ** 2)
+        r = self.client.get(f"/album/{item.album_id}/baixar/", follow=True)
+        self.assertContains(r, "grande demais para baixar de uma vez")
+
+    def test_album_pequeno_gera_zip(self):
+        item = self.item()
+        r = self.client.get(f"/album/{item.album_id}/baixar/")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(len(zipfile.ZipFile(io.BytesIO(b"".join(r.streaming_content))).namelist()), 1)
+
+    def test_excluir_conta_apaga_da_loja(self):
+        self.item()
+        accounts.delete_account(self.a)
+        self.assertEqual(self.loja.files, {})
+
+    def test_pagina_do_album_carrega_o_envio_em_partes(self):
+        r = self.client.get(f"/album/{self.album().pk}/")
+        self.assertContains(r, "data-one-by-one")
+        self.assertContains(r, 'data-max-upload="4194304"')
+
+
+class ModosDoSiteTests(TestCase):
+    def configuracao(self, **env):
+        base = {k: v for k, v in os.environ.items() if k not in ("VERCEL", "DATABASE_URL", "BLOB_READ_WRITE_TOKEN", "BLOB_STORE_ID", "EMAIL_HOST")}
+        codigo = ("import json;from config import settings as s;print(json.dumps([s.ROLEFLIX_DEMO,s.DATABASES['default']['ENGINE'],"
+                  "s.DATABASES['default'].get('OPTIONS',{}),s.STORAGES['default']['BACKEND'] if hasattr(s,'STORAGES') else '',"
+                  "s.ACCOUNT_EMAIL_VERIFICATION,s.CACHES['default']['BACKEND'].rsplit('.',1)[-1]]))")
+        r = subprocess.run([sys.executable, "-c", codigo], capture_output=True, text=True, check=True, cwd=settings.BASE_DIR,
+                           env={**base, "DJANGO_DEBUG": "0", "DJANGO_SECRET_KEY": "x" * 50, **env})
+        return json.loads(r.stdout)
+
+    URL = "postgresql://eu:se%40nha@ep-x-pooler.neon.tech/neondb?sslmode=require"
+
+    def test_so_o_banco_ou_so_a_loja_continua_em_demonstracao(self):
+        self.assertTrue(self.configuracao(VERCEL="1")[0])
+        self.assertTrue(self.configuracao(VERCEL="1", DATABASE_URL=self.URL)[0])
+        self.assertTrue(self.configuracao(VERCEL="1", BLOB_READ_WRITE_TOKEN="t")[0])
+
+    def test_banco_e_loja_ligados_guardam_de_verdade(self):
+        demo_, engine, opcoes, storage, verificacao, cache = self.configuracao(VERCEL="1", DATABASE_URL=self.URL, BLOB_STORE_ID="s")
+        self.assertFalse(demo_)
+        self.assertEqual(engine, "django.db.backends.postgresql")
+        self.assertEqual(opcoes, {"sslmode": "require"})
+        self.assertEqual(storage, "roleflix.storage.BlobStorage")
+        self.assertEqual(verificacao, "none")  # Sem serviço de e-mail, ninguém conseguiria confirmar.
+        self.assertEqual(cache, "DatabaseCache")
+
+    def test_com_email_ligado_exige_confirmacao(self):
+        self.assertEqual(self.configuracao(VERCEL="1", DATABASE_URL=self.URL, BLOB_STORE_ID="s", EMAIL_HOST="smtp.x")[4], "mandatory")
+
+    def test_fora_da_vercel_nada_muda(self):
+        self.assertEqual(self.configuracao()[:2], [False, "django.db.backends.sqlite3"])
+
+    def test_erro_de_arquivo_sumido_tambem_e_erro_de_arquivo_do_python(self):
+        self.assertTrue(issubclass(sdk_blob.BlobNotFoundError, FileNotFoundError))
+
+    def test_publicacao_sem_banco_nao_faz_nada(self):
+        base = {k: v for k, v in os.environ.items() if k != "DATABASE_URL"}
+        r = subprocess.run([sys.executable, "build.py"], capture_output=True, text=True, check=True, cwd=settings.BASE_DIR, env=base)
+        self.assertIn("nada a preparar", r.stdout)
