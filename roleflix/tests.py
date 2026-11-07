@@ -2,6 +2,7 @@ import io
 import json
 import re
 import shutil
+import smtplib
 import tempfile
 import zipfile
 from datetime import date, datetime, timedelta
@@ -2566,6 +2567,10 @@ class DemonstracaoEntreInstanciasTests(Base):
 class RecuperarSenhaTests(Base):
     NOVA = "OutraSenhaForte!456"
 
+    def setUp(self):
+        super().setUp()
+        cache.clear()  # O limite de pedidos por e-mail não pode passar de um teste para outro.
+
     def pedir(self, email="ana@x.com"):
         return self.client.post("/accounts/password/reset/", {"email": email})
 
@@ -2610,11 +2615,24 @@ class RecuperarSenhaTests(Base):
         self.assertRedirects(r, "/accounts/password/reset/done/")
         self.assertEqual(mail.outbox, [])
 
-    def test_servico_de_email_fora_do_ar_nao_derruba_a_pagina(self):
+    def test_servico_de_email_fora_do_ar_avisa_e_deixa_tentar_de_novo(self):
+        for erro in (OSError("sem conexão"), smtplib.SMTPAuthenticationError(535, b"recusado")):
+            with patch("django.core.mail.backends.locmem.EmailBackend.send_messages", side_effect=erro):
+                with self.assertLogs("roleflix.adapters", level="ERROR"):
+                    r = self.pedir()
+            self.assertContains(r, "Não conseguimos enviar o e-mail agora")
+        self.assertRedirects(self.pedir(), "/accounts/password/reset/done/")
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_excesso_de_pedidos_mostra_pagina_em_portugues(self):
+        for _ in range(5):
+            self.pedir()
+        r = self.pedir()
+        self.assertContains(r, "Muitas tentativas seguidas", status_code=429)
+
+    def test_email_sem_conta_nao_depende_do_servico_de_email(self):
         with patch("django.core.mail.backends.locmem.EmailBackend.send_messages", side_effect=OSError("sem conexão")):
-            with self.assertLogs("roleflix.adapters", level="ERROR"):
-                r = self.pedir()
-        self.assertEqual(r.status_code, 302)
+            self.assertRedirects(self.pedir("ninguem@x.com"), "/accounts/password/reset/done/")
 
     @override_settings(ROLEFLIX_DEMO=True)
     def test_demonstracao_avisa_quando_nao_envia_email(self):

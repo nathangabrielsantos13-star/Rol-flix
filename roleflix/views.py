@@ -4,6 +4,7 @@ import shutil
 import tempfile
 import zipfile
 
+from allauth.account.views import PasswordResetView
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login, logout
@@ -18,6 +19,7 @@ from django.utils.formats import date_format
 from django.utils.text import slugify
 from django.views.decorators.http import require_POST
 from . import accounts, covers, demo, homepage, retrospective, tickets, trailers
+from .adapters import EmailNaoEnviado
 from .forms import AlbumForm, AvatarForm, CollectionForm, MediaUploadForm, ProfileForm, FriendSearchForm, TicketForm, TrailerForm, media_kind
 from .models import Album, AlbumParticipant, AlbumView, Collection, CoverDesign, Favorite, FriendRequest, MediaItem, Notification, Profile, Ticket, Trailer
 from .places import search_places
@@ -715,3 +717,12 @@ def edit_profile(request):
         messages.success(request, "Perfil atualizado!")
         return redirect("profile", username=request.user.username)
     return render(request, "roleflix/profile_form.html", {"form": form})
+
+
+class RecuperarSenhaView(PasswordResetView):
+    def form_valid(self, form):
+        try:
+            return super().form_valid(form)
+        except EmailNaoEnviado:
+            form.add_error(None, "Não conseguimos enviar o e-mail agora. Tente de novo em alguns minutos.")
+            return self.form_invalid(form)
