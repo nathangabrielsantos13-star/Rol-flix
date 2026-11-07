@@ -2497,10 +2497,12 @@ class DemonstracaoTests(Base):
 
     @override_settings(ROLEFLIX_DEMO=True)
     def test_conta_de_teste_entra_com_email_e_senha(self):
-        demo.seed()
+        senha = demo.seed().password
         r = self.client.post("/accounts/login/", {"login": demo.DEMO_EMAIL, "password": demo.DEMO_PASSWORD})
         self.assertEqual(r.status_code, 302)
         self.assertEqual(self.client.get("/").context["user"].username, demo.DEMO_USERNAME)
+        # Se o login regravasse a senha, a sessão deixaria de valer nas outras instâncias.
+        self.assertEqual(User.objects.get(username=demo.DEMO_USERNAME).password, senha)
 
     @override_settings(ROLEFLIX_DEMO=True)
     def test_conta_de_teste_tem_a_mesma_senha_em_todas_as_instancias(self):

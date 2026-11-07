@@ -15,6 +15,7 @@ from .models import Album, AlbumParticipant, MediaItem, Notification, Profile
 DEMO_USERNAME = "demo"
 # Cada instância da Vercel cria o próprio banco, e a sessão de uma precisa valer na outra.
 # Por isso conta e arquivos são iguais em todas, e a senha usa um sal fixo: o resultado é sempre o mesmo.
+# O sal precisa ter 22 caracteres ou mais: com menos, o Django regrava a senha no login, com um sal aleatório.
 DEMO_EMAIL = "demo@roleflix.invalid"
 DEMO_PASSWORD = "roleflix-teste"
 ALBUMS = [
@@ -52,7 +53,7 @@ def seed():
     """Cria a conta e os álbuns de exemplo. Pode rodar de novo sem duplicar nada."""
     if Album.objects.filter(owner__username=DEMO_USERNAME).exists():
         return User.objects.get(username=DEMO_USERNAME)
-    user, _ = User.objects.get_or_create(username=DEMO_USERNAME, defaults={"first_name": "Visitante", "email": DEMO_EMAIL, "password": make_password(DEMO_PASSWORD, salt="roleflixdemo")})
+    user, _ = User.objects.get_or_create(username=DEMO_USERNAME, defaults={"first_name": "Visitante", "email": DEMO_EMAIL, "password": make_password(DEMO_PASSWORD, salt="roleflixdemonstracao2026")})
     Profile.objects.get_or_create(user=user)
     friends = [User.objects.get_or_create(username=name, defaults={"first_name": first})[0] for name, first in (("beatriz", "Beatriz"), ("leo", "Léo"))]
     albums = {}
