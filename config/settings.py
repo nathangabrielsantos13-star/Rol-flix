@@ -16,9 +16,10 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 if not SECRET_KEY:
     raise ImproperlyConfigured("Defina DJANGO_SECRET_KEY no arquivo .env (veja .env.example).")
 hosts = [host.strip() for host in os.getenv("DJANGO_ALLOWED_HOSTS", "").split(",") if host.strip()]
-hosts += [os.environ[name] for name in ("VERCEL_URL", "VERCEL_BRANCH_URL", "VERCEL_PROJECT_PRODUCTION_URL") if os.getenv(name)]
+if ROLEFLIX_DEMO:
+    hosts.append(".vercel.app")  # O domínio final do projeto nem sempre vem nas variáveis da Vercel.
 ALLOWED_HOSTS = [*hosts, "127.0.0.1", "localhost"]
-CSRF_TRUSTED_ORIGINS = [f"https://{host}" for host in hosts]
+CSRF_TRUSTED_ORIGINS = [f"https://*{host}" if host.startswith(".") else f"https://{host}" for host in hosts]
 
 INSTALLED_APPS = [
     "django.contrib.admin", "django.contrib.auth", "django.contrib.contenttypes",
