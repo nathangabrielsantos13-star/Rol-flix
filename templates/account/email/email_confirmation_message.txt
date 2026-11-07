@@ -1,0 +1,6 @@
+{% extends "account/email/base_message.txt" %}
+{% block content %}{% autoescape off %}Confirme seu e-mail para entrar no Rolêflix abrindo este link:
+
+{{ activate_url }}
+
+Se você não criou esta conta, pode ignorar esta mensagem.{% endautoescape %}{% endblock content %}

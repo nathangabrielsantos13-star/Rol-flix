@@ -1,0 +1,4 @@
+<section class="home-section">
+  <div class="row-head"><h2>{{ title }}</h2>{% if more_url %}<a class="text-link" href="{{ more_url }}">Ver todos</a>{% endif %}</div>
+  <div class="poster-row" data-row tabindex="0" aria-label="{{ title }}">{% for album in albums %}{% include "roleflix/poster_card.html" %}{% endfor %}</div>
+</section>

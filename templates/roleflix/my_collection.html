@@ -1,0 +1,12 @@
+{% extends "base.html" %}{% block title %}{{ collection.title }} | Rolêflix{% endblock %}{% block content %}
+<p class="eyebrow">MINHA COLEÇÃO</p>
+<h1>{{ collection.title }}</h1>
+<p class="muted">Só você vê esta coleção.</p>
+{% if albums %}<div class="grid">{% for album in albums %}<div class="collection-item">{% include "roleflix/album_card.html" %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="remove"><input type="hidden" name="album" value="{{ album.pk }}"><button class="text-button" type="submit">Tirar da coleção</button></form></div>{% endfor %}</div>
+{% else %}<p class="muted">Esta coleção ainda está vazia.</p>{% endif %}
+{% if available %}
+<section class="form-panel"><h2>Adicionar rolês</h2><form method="post">{% csrf_token %}<input type="hidden" name="action" value="add">{% for album in available %}<label class="check"><input type="checkbox" name="albums" value="{{ album.pk }}"> {{ album.title }}</label>{% endfor %}<button class="primary" type="submit">Adicionar</button></form></section>
+{% endif %}
+<section class="form-panel"><h2>Renomear</h2><form method="post">{% csrf_token %}<input type="hidden" name="action" value="rename"><input name="title" maxlength="60" required value="{{ collection.title }}" aria-label="Nome da coleção"><button class="primary" type="submit">Salvar nome</button></form>
+<details class="collection-delete"><summary class="secondary danger">Excluir coleção</summary><p class="muted">Isso apaga só a coleção. Os álbuns continuam guardados.</p><form method="post">{% csrf_token %}<input type="hidden" name="action" value="delete"><button class="secondary danger" type="submit">Confirmar exclusão</button></form></details></section>
+{% endblock %}

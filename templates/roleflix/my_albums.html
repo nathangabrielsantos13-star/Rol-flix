@@ -1,0 +1,16 @@
+{% extends "base.html" %}{% block title %}Meus rolês | Rolêflix<h2 id="colecoes">Minhas coleções</h2>
+{% if collections %}<div class="collection-list">{% for item in collections %}<a class="next-step" href="{{ item.url }}"><b>{{ item.title }}</b><span>{{ item.albums|length }} rolê{{ item.albums|length|pluralize }}</span></a>{% endfor %}</div>{% else %}<p class="muted">Agrupe rolês do seu jeito. As coleções são só suas: ninguém mais as vê.</p>{% endif %}
+<form class="inline-create" method="post" action="{% url 'create_collection' %}">{% csrf_token %}<input name="title" maxlength="60" required placeholder="Nome da nova coleção" aria-label="Nome da nova coleção"><button class="primary" type="submit">Criar coleção</button></form>
+{% endblock %}{% block content %}
+<div class="section-head"><h1 class="map-title">Meus rolês</h1><span class="section-links"><a class="text-link" href="{% url 'my_tickets' %}">Meus ingressos</a><a class="text-link" href="{% url 'retrospective_latest' %}">Ver retrospectiva</a></span></div>
+{% if favorites %}<h2>Favoritos</h2><div class="grid">{% for album in favorites %}{% include "roleflix/album_card.html" %}{% endfor %}</div>{% endif %}
+<h2>Criados por mim</h2>
+{% if mine %}<div class="grid">{% for album in mine %}{% include "roleflix/album_card.html" %}{% endfor %}</div>
+{% else %}<section class="empty-cta"><p>Você ainda não criou nenhum rolê.</p><a class="primary" href="{% url 'create_album' %}">＋ Criar álbum</a></section>{% endif %}
+<h2>Compartilhados comigo</h2>
+{% if shared %}<div class="grid">{% for album in shared %}{% include "roleflix/album_card.html" %}{% endfor %}</div>
+{% else %}<section class="empty-cta"><p>Ninguém compartilhou um álbum com você ainda.</p><a class="primary" href="{% url 'friends' %}">Procurar amigos</a></section>{% endif %}
+<h2 id="colecoes">Minhas coleções</h2>
+{% if collections %}<div class="collection-list">{% for item in collections %}<a class="next-step" href="{{ item.url }}"><b>{{ item.title }}</b><span>{{ item.albums|length }} rolê{{ item.albums|length|pluralize }}</span></a>{% endfor %}</div>{% else %}<p class="muted">Agrupe rolês do seu jeito. As coleções são só suas: ninguém mais as vê.</p>{% endif %}
+<form class="inline-create" method="post" action="{% url 'create_collection' %}">{% csrf_token %}<input name="title" maxlength="60" required placeholder="Nome da nova coleção" aria-label="Nome da nova coleção"><button class="primary" type="submit">Criar coleção</button></form>
+{% endblock %}

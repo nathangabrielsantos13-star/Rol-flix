@@ -1,0 +1,50 @@
+{% extends "base.html" %}{% load static %}{% block title %}Editor de capas | Rolêflix{% endblock %}
+{% block head %}<link rel="stylesheet" href="{% static 'css/cover-fonts.css' %}">{% endblock %}
+{% block content %}
+<div class="section-head cover-head">
+  <div><p class="eyebrow">EDITOR DE CAPAS</p><h1 class="map-title">{{ album.title }}</h1></div>
+  <a class="secondary" href="{% url 'album_detail' album.pk %}">Voltar ao álbum</a>
+</div>
+<div class="cover-editor" data-cover-editor>
+  <div class="cover-stage">
+    <canvas id="cover-canvas" width="{{ width }}" height="{{ height }}" aria-label="Prévia da capa"></canvas>
+    <p class="muted small">Arraste o texto na imagem para mudar a posição.</p>
+    <p class="message-error" role="alert" data-cover-error hidden></p>
+    <div class="cover-save">
+      <button class="primary" type="button" data-cover-save>Salvar capa</button>
+      {% if has_design %}<button class="text-button" type="submit" form="cover-restore">Voltar à foto original</button>{% endif %}
+    </div>
+  </div>
+  <form class="cover-tools" data-cover-form>{% csrf_token %}
+    <fieldset>
+      <legend>Modelos prontos</legend>
+      <div class="option-row" data-templates></div>
+    </fieldset>
+    <fieldset>
+      <legend>Imagem de fundo</legend>
+      <input type="file" accept="image/jpeg,image/png,image/webp" data-cover-upload aria-label="Enviar imagem de fundo">
+      <div class="cover-photos" data-cover-photos></div>
+    </fieldset>
+    <fieldset>
+      <legend>Título</legend>
+      <input data-field="title" maxlength="80" aria-label="Título da capa">
+      <label>Tamanho <input type="range" data-field="title_size" data-number min="60" max="260" step="2"></label>
+    </fieldset>
+    <fieldset>
+      <legend>Sinopse</legend>
+      <textarea data-field="synopsis" maxlength="240" rows="2" aria-label="Sinopse da capa"></textarea>
+    </fieldset>
+    <fieldset class="cover-grid">
+      <legend>Estilo</legend>
+      <label>Fonte <select data-field="font" data-fonts></select></label>
+      <label>Filtro <select data-field="filter" data-filters></select></label>
+      <label>Posição <select data-field="position" data-positions></select></label>
+      <label>Cor do texto <input type="color" data-field="color"></label>
+      <label>Cor dos detalhes <input type="color" data-field="accent"></label>
+    </fieldset>
+    <label class="check"><input type="checkbox" data-field="show_cast"> Mostrar as fotos do elenco</label>
+  </form>
+</div>
+{% if has_design %}<form id="cover-restore" method="post" action="{% url 'restore_cover' album.pk %}" hidden>{% csrf_token %}</form>{% endif %}
+{{ editor|json_script:"cover-data" }}
+{% endblock %}{% block scripts %}<script src="{% static 'js/cover-editor.js' %}" defer></script>{% endblock %}

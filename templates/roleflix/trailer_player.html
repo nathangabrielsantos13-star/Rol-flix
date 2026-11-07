@@ -1,0 +1,4 @@
+<dialog class="trailer-dialog" id="trailer-player" aria-label="Trailer de {{ album.title }}">
+  <form method="dialog"><button class="trailer-close" aria-label="Fechar trailer">✕</button></form>
+  <video controls preload="metadata" playsinline{% if album.cover %} poster="{{ album.cover.url }}"{% endif %} src="{{ trailer.file.url }}" data-share-name="{{ album.title|slugify|default:'role' }}-trailer.mp4"></video>
+</dialog>

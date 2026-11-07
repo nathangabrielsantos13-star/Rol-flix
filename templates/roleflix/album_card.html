@@ -1,0 +1,4 @@
+<a class="album-card" href="{% url 'album_detail' album.pk %}">
+  {% if album.cover %}<img src="{{ album.cover.url }}" alt="Capa de {{ album.title }}">{% else %}<div class="cover-placeholder">RF</div>{% endif %}
+  <div class="card-info"><h3>{{ album.title }}</h3><p>{{ album.synopsis|default:"Uma história esperando para ser contada." }}</p><small>{% if album.location %}📍 {{ album.location }}{% else %}Álbum{% endif %}</small><div class="card-cast">{% for person in album.cast %}{% include "roleflix/avatar.html" %}{% endfor %}</div></div>
+</a>

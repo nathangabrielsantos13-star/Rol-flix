@@ -1,0 +1,91 @@
+{% extends "base.html" %}{% load static %}{% block title %}Rolêflix | Início{% endblock %}
+{% block main_class %}{% if user.is_authenticated %} wide{% endif %}{% endblock %}
+{% block content %}
+{% if not user.is_authenticated %}
+<section class="hero"><div class="hero-content"><p class="eyebrow">BEM-VINDO AO ROLÊFLIX</p><h1>As melhores histórias<br>não ficam só na galeria.</h1><p>Crie álbuns cinematográficos e compartilhe suas memórias com os amigos.</p><a class="primary" href="{% url 'signup' %}">Começar agora</a> <a class="secondary" href="{% url 'account_login' %}">Entrar</a></div></section>
+{% elif featured %}
+<section class="home-hero"{% if featured.cover %} style="background-image:url('{{ featured.backdrop.url }}')"{% endif %}>
+  <div class="home-hero-text">
+    <p class="eyebrow">EM DESTAQUE</p>
+    <h1>{{ featured.title }}</h1>
+    {% if featured.synopsis %}<p class="synopsis">{{ featured.synopsis }}</p>{% endif %}
+    {% if featured.event_date or featured.location %}<p class="home-hero-meta">{{ featured.event_date|date:"d/m/Y" }}{% if featured.event_date and featured.location %} • {% endif %}{{ featured.location }}</p>{% endif %}
+    <div class="cast-list">{% for person in featured.cast %}<span class="cast-member">{% include "roleflix/avatar.html" %}<span>{{ person.first_name|default:person.username }}</span></span>{% endfor %}</div>
+    <div class="home-hero-actions">
+      <a class="primary" href="{% url 'album_detail' featured.pk %}">▶ Rever este rolê</a>
+      {% if trailer %}<button class="secondary" type="button" data-trailer-open>Assistir trailer</button>{% endif %}
+    </div>
+  </div>
+</section>
+{% if trailer %}{% include "roleflix/trailer_player.html" with album=featured %}{% endif %}
+{% else %}
+<section class="hero home-empty">
+  <div class="hero-content"><p class="eyebrow">SUA VIDA, EM CARTAZ</p><h1>Todo rolê merece<br>um lugar na história.</h1>
+  <p>Transforme viagens, encontros e momentos aleatórios em filmes da sua turma.</p>
+  <a class="primary" href="{% url 'create_album' %}">＋ Criar álbum</a></div>
+</section>
+{% endif %}
+{% if user.is_authenticated %}
+{% if show_tutorial %}<section class="home-section home-slim"><div class="tutorial-banner"><span><b>Novo por aqui?</b> Aprenda a usar o Rolêflix em 7 etapas.</span><span class="tutorial-banner-actions"><a class="primary" href="{% url 'tutorial' %}">Começar tutorial</a><form method="post" action="{% url 'hide_tutorial' %}">{% csrf_token %}<input type="hidden" name="to" value="home"><button class="text-button" type="submit">Não mostrar novamente</button></form></span></div></section>{% endif %}
+{% if retro_year %}<section class="home-section home-slim"><a class="retro-banner{% if retro_ready %} ready{% endif %}" href="{% url 'retrospective' retro_year %}"><span><small class="eyebrow">{% if retro_ready %}JÁ ESTÁ PRONTA{% else %}ATÉ AGORA{% endif %}</small><b>Sua retrospectiva {{ retro_year }}</b></span><span class="retro-go">▶ Ver</span></a></section>{% endif %}
+
+{% if continue_exploring %}{% include "roleflix/home_row.html" with title="Continue de onde parou" albums=continue_exploring more_url="" %}{% endif %}
+
+{% if favorites %}{% include "roleflix/home_row.html" with title="Meus favoritos" albums=favorites more_url="" %}{% endif %}
+
+{% if mine %}{% url 'my_albums' as all_albums %}{% if more_mine %}{% include "roleflix/home_row.html" with title="Meus álbuns" albums=mine more_url=all_albums %}{% else %}{% include "roleflix/home_row.html" with title="Meus álbuns" albums=mine more_url="" %}{% endif %}{% endif %}
+
+{% if shared %}{% url 'my_albums' as all_albums %}{% if more_shared %}{% include "roleflix/home_row.html" with title="Compartilhados comigo" albums=shared more_url=all_albums show_owner=True %}{% else %}{% include "roleflix/home_row.html" with title="Compartilhados comigo" albums=shared more_url="" show_owner=True %}{% endif %}
+{% elif not has_shared %}<section class="home-section"><div class="row-head"><h2>Compartilhados comigo</h2></div><div class="empty-cta"><p>Ninguém compartilhou um álbum com você ainda. Encontre seus amigos para trocar rolês.</p><a class="primary" href="{% url 'friends' %}">Procurar amigos</a></div></section>{% endif %}
+
+{% if collections %}
+<section class="home-section">
+  <div class="row-head"><h2>Suas coleções</h2><a class="text-link" href="{% url 'my_albums' %}#colecoes">Criar coleção</a></div>
+  <div class="poster-row" data-row tabindex="0" aria-label="Suas coleções">
+    {% for item in collections %}
+    <a class="collection-card" href="{{ item.url }}">
+      <span class="collection-covers count-{{ item.covers|length }}" aria-hidden="true">{% for cover in item.covers %}<img loading="lazy" src="{{ cover.url }}" alt="">{% empty %}<span class="poster-blank">RF</span>{% endfor %}</span>
+      <span class="poster-text"><strong>{{ item.title }}</strong><small class="poster-meta">{{ item.albums|length }} rolê{{ item.albums|length|pluralize }}</small></span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if memories %}
+<section class="home-section">
+  <div class="row-head"><h2>Recordações de outros anos</h2></div>
+  <div class="poster-row" data-row tabindex="0" aria-label="Recordações de outros anos">{% for memory in memories %}{% include "roleflix/poster_card.html" with album=memory.album phrase=memory.phrase %}{% endfor %}</div>
+</section>
+{% endif %}
+
+{% if destinations %}
+<section class="home-section">
+  <a class="destinations" href="{% url 'album_map' %}">
+    <canvas id="home-map" aria-hidden="true"></canvas>
+    <span class="destinations-text">
+      <p class="eyebrow">EXPLORE SEUS DESTINOS</p>
+      <strong>{{ destinations|length }} lugar{{ destinations|length|pluralize:",es" }} no seu mapa</strong>
+      <span class="destination-names">{% for label in destination_labels %}<small>{{ label }}</small>{% endfor %}</span>
+      <span class="secondary">Abrir mapa</span>
+    </span>
+  </a>
+  {{ destinations|json_script:"home-map-pins" }}
+</section>
+{% endif %}
+
+{% if latest %}{% include "roleflix/home_row.html" with title="Últimos rolês adicionados" albums=latest more_url="" %}{% endif %}
+
+{% if few_albums %}
+<section class="home-section">
+  <div class="row-head"><h2>Sua próxima história</h2></div>
+  <div class="next-steps">
+    <a class="next-step" href="{% url 'create_album' %}"><b>＋ Criar um álbum</b><span>Guarde fotos e vídeos do último rolê.</span></a>
+    <a class="next-step" href="{% url 'friends' %}"><b>Chamar a turma</b><span>Adicione amigos para compartilhar lembranças.</span></a>
+    {% if featured.owner == user %}<a class="next-step" href="{% url 'create_trailer' featured.pk %}"><b>Criar um trailer</b><span>Transforme {{ featured.title }} em vídeo.</span></a>{% else %}<a class="next-step" href="{% url 'album_map' %}"><b>Ver o mapa</b><span>Descubra por onde seus rolês passaram.</span></a>{% endif %}
+  </div>
+</section>
+{% endif %}
+{% endif %}
+{% endblock %}
+{% block scripts %}{% if user.is_authenticated %}{% if destinations %}<script src="{% static 'js/globe-dots.js' %}" defer></script>{% endif %}<script src="{% static 'js/home.js' %}" defer></script>{% if trailer %}<script src="{% static 'js/trailer.js' %}" defer></script>{% endif %}{% endif %}{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% load static %}{% block title %}Mapa dos rolês | Rolêflix{% endblock %}
+{% block head %}<link rel="stylesheet" href="{% static 'vendor/leaflet/leaflet.css' %}">{% endblock %}
+{% block content %}
+<div class="section-head"><h1 class="map-title">Mapa dos rolês</h1><p class="muted">{% with total=places|length %}{% if total %}{{ total }} lugar{{ total|pluralize:",es" }} no mapa{% else %}Nenhum lugar no mapa ainda{% endif %}{% endwith %}</p></div>
+<section class="map-stage">
+  <div id="map" aria-label="Mapa com os lugares dos rolês"></div>
+  <div id="map-loader" class="map-loader" role="status">
+    <canvas id="globe"></canvas>
+    <p>Procurando seus rolês pelo mundo…</p>
+  </div>
+</section>
+{% if not places %}<section class="empty-cta map-empty"><p>Crie um álbum e escolha a cidade na lista de sugestões para ele aparecer aqui.</p><a class="primary" href="{% url 'create_album' %}">＋ Criar álbum</a></section>
+{% elif without_pin %}<p class="muted map-hint">{{ without_pin }} álbu{{ without_pin|pluralize:"m,ns" }} sem lugar no mapa. Edite e escolha a cidade na lista de sugestões.</p>{% endif %}
+{{ places|json_script:"map-places" }}
+{% endblock %}
+{% block scripts %}
+<script src="{% static 'vendor/leaflet/leaflet.js' %}"></script>
+<script src="{% static 'js/globe-dots.js' %}"></script>
+<script src="{% static 'js/globe.js' %}"></script>
+<script src="{% static 'js/map.js' %}"></script>
+{% endblock %}

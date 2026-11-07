@@ -1,0 +1,1 @@
+{% extends "base.html" %}{% block title %}Editar perfil | Rolêflix{% endblock %}{% block content %}<section class="form-panel"><p class="eyebrow">SEU PERFIL</p><h1>Como você aparece no elenco</h1><form method="post" enctype="multipart/form-data">{% csrf_token %}{{ form.as_p }}<button class="primary" type="submit">Salvar perfil</button></form></section>{% endblock %}

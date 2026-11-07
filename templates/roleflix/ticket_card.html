@@ -1,0 +1,13 @@
+<article class="ticket-card{% if ticket.is_favorite %} favorite{% endif %}">
+  <a href="{{ ticket.image.url }}" target="_blank" rel="noopener"><img loading="lazy" src="{{ ticket.image.url }}" alt="Ingresso {{ ticket.number }} de {{ ticket.album.title }}"></a>
+  <p class="ticket-meta"><b>{{ ticket.number }}</b> <span class="muted">{{ ticket.get_style_display }}{% if ticket.upcoming %} • Pré-estreia{% endif %}{% if show_album %} • {{ ticket.album.title }}{% elif ticket.created_by != user %} • de {{ ticket.created_by.first_name|default:ticket.created_by.username }}{% endif %}</span></p>
+  <div class="ticket-actions">
+    <a class="secondary" href="{% url 'download_ticket' ticket.pk 'png' %}">PNG</a>
+    <a class="secondary" href="{% url 'download_ticket' ticket.pk 'pdf' %}">PDF</a>
+    <button class="secondary" type="button" data-ticket-share data-src="{{ ticket.image.url }}" data-name="{{ ticket.number|lower }}.png" hidden>Compartilhar</button>
+    {% if ticket.created_by == user %}
+    <form method="post" action="{% url 'favorite_ticket' ticket.pk %}">{% csrf_token %}<button class="secondary favorite-button{% if ticket.is_favorite %} active{% endif %}" type="submit" aria-pressed="{{ ticket.is_favorite|yesno:'true,false' }}">{% if ticket.is_favorite %}★ Favorito{% else %}☆ Favoritar{% endif %}</button></form>
+    <form method="post" action="{% url 'delete_ticket' ticket.pk %}">{% csrf_token %}<button class="text-button" type="submit">Excluir</button></form>
+    {% endif %}
+  </div>
+</article>

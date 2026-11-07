@@ -1,0 +1,64 @@
+{% load static %}
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Rolêflix{% endblock %}</title>
+{% block head %}{% endblock %}
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+<link rel="manifest" href="{% url 'manifest' %}">
+<link rel="icon" type="image/png" href="{% static 'icons/icon-192.png' %}">
+<link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
+<meta name="theme-color" content="#090909">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Rolêflix">
+<script src="{% static 'js/pwa.js' %}" defer></script>
+<script src="{% static 'js/nav.js' %}" defer></script>
+</head>
+<body>
+<script src="{% static 'js/intro.js' %}"></script>
+<header class="topbar">
+  <a class="brand" href="{% url 'home' %}" aria-label="Rolêflix, ir para o início">ROLÊ<span>FLIX</span></a>
+  {% with current=request.resolver_match.url_name %}
+  <nav class="main-nav" aria-label="Principal">
+    <a href="{% url 'home' %}"{% if current == 'home' %} aria-current="page"{% endif %}>Início</a>
+    {% if user.is_authenticated %}
+      <a href="{% url 'my_albums' %}"{% if current == 'my_albums' %} aria-current="page"{% endif %}>Meus rolês</a>
+      <a href="{% url 'album_map' %}"{% if current == 'album_map' %} aria-current="page"{% endif %}>Mapa</a>
+      <a href="{% url 'friends' %}"{% if current == 'friends' %} aria-current="page"{% endif %}>Amigos</a>
+    {% endif %}
+  </nav>
+  <div class="top-actions">
+    {% if user.is_authenticated %}
+      <form class="nav-search{% if query %} open{% endif %}" action="{% url 'search' %}" role="search">
+        <input type="search" name="q" placeholder="Buscar rolês ou pessoas" aria-label="Buscar rolês ou pessoas" value="{{ query|default:'' }}">
+        <button class="icon-button" type="submit" aria-label="Buscar"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.8-3.8"/></svg></button>
+      </form>
+      <a class="icon-button" href="{% url 'notifications' %}" aria-label="{% if unread_notifications %}Notificações: {{ unread_notifications }} nova{{ unread_notifications|pluralize }}{% else %}Notificações{% endif %}"{% if current == 'notifications' %} aria-current="page"{% endif %}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 1 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9"/><path d="M10 20a2.2 2.2 0 0 0 4 0"/></svg>{% if unread_notifications %}<span class="notif-dot"></span>{% endif %}</a>
+      <details class="profile-menu">
+        <summary class="icon-button" aria-label="Abrir menu do perfil">{% if user.profile.avatar %}<img src="{{ user.profile.avatar.url }}" alt="">{% else %}<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5c1-4.2 4-6 7.5-6s6.500 1.800 7.500 6"/></svg>{% endif %}</summary>
+        <div class="profile-dropdown">
+          <p class="profile-name">{{ user.first_name|default:user.username }}</p>
+          <a href="{% url 'profile' user.username %}">Meu perfil</a>
+          <button type="button" data-install-open hidden>Instalar app</button>
+          <form method="post" action="{% url 'account_logout' %}">{% csrf_token %}<button type="submit">Sair</button></form>
+        </div>
+      </details>
+      <a class="nav-button" href="{% url 'create_album' %}" aria-label="Novo álbum">＋<span class="nav-button-label"> Novo álbum</span></a>
+    {% else %}
+      <a class="guest-link" href="{% url 'account_login' %}">Entrar</a>
+      <a class="nav-button" href="{% url 'signup' %}">Criar conta</a>
+    {% endif %}
+  </div>
+  {% endwith %}
+</header>
+<main class="container{% block main_class %}{% endblock %}">
+{% if messages %}{% for message in messages %}<div class="message">{{ message }}</div>{% endfor %}{% endif %}
+{% block content %}{% endblock %}
+</main>
+<footer>ROLÊFLIX <span>•</span> Suas histórias merecem virar filme. <span class="footer-links"><a href="{% url 'terms' %}">Termos</a> <a href="{% url 'privacy' %}">Privacidade</a></span>{% if not user.is_authenticated %} <button class="footer-install" type="button" data-install-open hidden>Instalar app</button>{% endif %}</footer>
+{% include "roleflix/install_guide.html" %}
+{% block scripts %}{% endblock %}
+</body></html>

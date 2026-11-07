@@ -1,0 +1,9 @@
+<a class="poster{% if album.has_poster %} custom{% endif %}" href="{% url 'album_detail' album.pk %}">
+  {% if album.cover %}<img loading="lazy" src="{{ album.cover.url }}" alt="">{% else %}<span class="poster-blank" aria-hidden="true">RF</span>{% endif %}
+  <span class="poster-text">
+    {% if phrase %}<small class="poster-phrase">{{ phrase }}</small>{% endif %}
+    <strong>{{ album.title }}</strong>
+    <small class="poster-meta">{% if album.location %}{{ album.location }}{% elif album.event_date %}{{ album.event_date|date:"d/m/Y" }}{% else %}{{ album.synopsis|default:"Uma história para rever"|truncatechars:42 }}{% endif %}</small>
+    <span class="poster-people"><span class="card-cast">{% for person in album.cast|slice:":5" %}{% include "roleflix/avatar.html" %}{% endfor %}</span>{% if show_owner %}<small>Compartilhado por {{ album.owner.first_name|default:album.owner.username }}</small>{% endif %}</span>
+  </span>
+</a>

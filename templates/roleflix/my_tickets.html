@@ -1,0 +1,6 @@
+{% extends "base.html" %}{% load static %}{% block title %}Meus ingressos | Rolêflix{% endblock %}{% block content %}
+<p class="eyebrow">SUA COLEÇÃO</p>
+<h1>Meus ingressos</h1>
+{% if tickets %}<div class="ticket-grid">{% for ticket in tickets %}{% include "roleflix/ticket_card.html" with show_album=True %}{% endfor %}</div>
+{% else %}<section class="empty-cta"><p>Você ainda não tem ingressos. Abra um álbum e use Gerar ingresso.</p><a class="primary" href="{% url 'my_albums' %}">Ver meus rolês</a></section>{% endif %}
+{% endblock %}{% block scripts %}<script src="{% static 'js/ticket.js' %}" defer></script>{% endblock %}

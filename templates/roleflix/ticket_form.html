@@ -1,0 +1,30 @@
+{% extends "base.html" %}{% load static %}{% block title %}Gerar ingresso | Rolêflix{% endblock %}{% block content %}
+<div class="section-head"><div><p class="eyebrow">{% if upcoming %}PRÉ-ESTREIA{% else %}INGRESSO DO ROLÊ{% endif %}</p><h1 class="map-title">{{ album.title }}</h1></div><a class="secondary" href="{% url 'album_detail' album.pk %}">Voltar ao álbum</a></div>
+{% if upcoming %}<p class="muted">Este rolê ainda vai acontecer: o ingresso sai como pré-estreia, para entrar no clima da viagem.</p>{% endif %}
+<div class="ticket-editor">
+  <div>
+    <img class="ticket-preview" src="{% url 'ticket_preview' album.pk %}?style={{ form.style.value }}&amp;tagline={{ form.tagline.value|urlencode }}" alt="Prévia do ingresso" data-ticket-preview data-url="{% url 'ticket_preview' album.pk %}">
+    <p class="muted small">O número definitivo aparece quando o ingresso é gerado.</p>
+  </div>
+  <form class="cover-tools" method="post" data-ticket-form>{% csrf_token %}
+    {{ form.non_field_errors }}
+    <fieldset>
+      <legend>Modelo</legend>
+      <div class="option-row">{% for radio in form.style %}<label class="option-card">{{ radio.tag }}<span>{{ radio.choice_label }}</span></label>{% endfor %}</div>
+      {{ form.style.errors }}
+    </fieldset>
+    <fieldset>
+      <legend>Frase do ingresso</legend>
+      {{ form.tagline }}
+      {{ form.tagline.errors }}
+    </fieldset>
+    <fieldset>
+      <legend>Cor dos detalhes</legend>
+      <label class="check"><input type="checkbox" name="custom_color"{% if form.accent.value %} checked{% endif %} data-custom-color> Usar uma cor minha</label>
+      <input type="color" name="accent" value="{{ form.accent.value|default:'#e50914' }}" aria-label="Cor dos detalhes" data-accent{% if not form.accent.value %} hidden{% endif %}>
+      {{ form.accent.errors }}
+    </fieldset>
+    <button class="primary" type="submit">Gerar ingresso</button>
+  </form>
+</div>
+{% endblock %}{% block scripts %}<script src="{% static 'js/ticket.js' %}" defer></script>{% endblock %}

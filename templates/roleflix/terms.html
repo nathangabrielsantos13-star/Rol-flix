@@ -1,0 +1,27 @@
+{% extends "base.html" %}{% block title %}Termos de uso | Rolêflix{% endblock %}{% block content %}
+<article class="legal">
+  <p class="eyebrow">ROLÊFLIX</p>
+  <h1>Termos de uso</h1>
+  <p>Ao criar uma conta, você concorda com estes termos. Contato: <a class="text-link" href="mailto:{{ contact_email }}">{{ contact_email }}</a>.</p>
+  <h2>O serviço</h2>
+  <p>O Rolêflix é um espaço gratuito para guardar e compartilhar lembranças com amigos. Ele pode mudar, ficar fora do ar ou ser encerrado. Mantenha cópias das fotos e vídeos importantes.</p>
+  <h2>Sua conta</h2>
+  <p>Você precisa ter pelo menos 18 anos, usar dados verdadeiros e proteger sua senha.</p>
+  <h2>Seu conteúdo</h2>
+  <p>O que você envia continua sendo seu. Você nos autoriza apenas a guardar, processar e exibir esse conteúdo para fazer o site funcionar, inclusive para gerar capas, trailers e ingressos.</p>
+  <h2>O que não é permitido</h2>
+  <ul>
+    <li>Enviar conteúdo ilegal, conteúdo sexual envolvendo menores ou imagens íntimas de alguém sem consentimento.</li>
+    <li>Publicar a imagem de alguém para humilhar, ameaçar ou assediar.</li>
+    <li>Enviar músicas, fotos ou vídeos cujo uso você não tem direito de fazer.</li>
+    <li>Tentar acessar álbuns ou contas de outras pessoas, ou sobrecarregar o site.</li>
+  </ul>
+  <p>Conteúdo e contas que violem estas regras podem ser removidos.</p>
+  <h2>Ingressos</h2>
+  <p>Os ingressos são lembranças digitais. Não dão acesso a nenhum evento e não têm valor comercial.</p>
+  <h2>Encerrando a conta</h2>
+  <p>Você pode excluir sua conta quando quiser, pelo perfil. Veja a <a class="text-link" href="{% url 'privacy' %}">política de privacidade</a>.</p>
+  <h2>Lei aplicável</h2>
+  <p>Estes termos seguem as leis do Brasil.</p>
+</article>
+{% endblock %}

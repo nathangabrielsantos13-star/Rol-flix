@@ -1,0 +1,25 @@
+{% extends "base.html" %}{% load static %}{% block content %}<section class="profile-head">{% if person == user %}<form class="avatar-form" method="post" enctype="multipart/form-data" action="{% url 'change_avatar' %}">{% csrf_token %}<label class="avatar-edit">{% if person.profile.avatar %}<img src="{{ person.profile.avatar.url }}" alt="Sua foto de perfil">{% else %}<span class="avatar-placeholder">{{ person.username|first|upper }}</span>{% endif %}<span class="avatar-edit-label">{% if person.profile.avatar %}Trocar foto{% else %}Adicionar foto{% endif %}</span><input type="file" name="avatar" accept="image/jpeg,image/png,image/webp" data-avatar-input aria-label="Escolher foto de perfil"></label><noscript><button class="secondary" type="submit">Salvar foto</button></noscript></form>{% elif person.profile.avatar %}<img src="{{ person.profile.avatar.url }}" alt="Foto de {{ person.first_name|default:person.username }}">{% else %}<div class="avatar-placeholder">{{ person.username|first|upper }}</div>{% endif %}<div><p class="eyebrow">PERFIL</p><h1>{{ person.first_name|default:person.username }}</h1><p class="muted">@{{ person.username }}</p><p class="muted">{{ person.profile.bio }}</p></div></section>
+{% if person == user %}
+<section class="account-panel">
+  <h2>Meu perfil</h2>
+  <p class="muted">Gerencie sua conta e suas preferências.</p>
+  <div class="account-links">
+    <a class="next-step" href="{% url 'edit_profile' %}"><b>Configurações da conta</b><span>Editar perfil: nome, foto e descrição.</span></a>
+    <a class="next-step" href="{% url 'my_albums' %}"><b>Meus álbuns</b><span>Os rolês que você criou e os compartilhados com você.</span></a>
+    <a class="next-step" href="{% url 'friends' %}"><b>Meus amigos</b><span>Encontre pessoas e responda pedidos de amizade.</span></a>
+    <a class="next-step" href="{% url 'my_tickets' %}"><b>Meus ingressos</b><span>Sua coleção de lembranças de cada rolê.</span></a>
+    <a class="next-step" href="{% url 'retrospective_latest' %}"><b>Minhas retrospectivas</b><span>O resumo de cada ano em rolês, lugares e pessoas.</span></a>
+  </div>
+  <div class="help-card">
+    <div>
+      <p class="eyebrow">CENTRAL DE AJUDA</p>
+      <h3>Como usar o Rolêflix</h3>
+      <p class="muted">Tutorial: aprenda a criar álbuns, adicionar fotos, compartilhar memórias e criar trailers.</p>
+    </div>
+    <a class="primary" href="{% url 'tutorial' %}">Começar tutorial</a>
+  </div>
+  <form method="post" action="{% url 'account_logout' %}">{% csrf_token %}<button class="secondary danger" type="submit">Sair da conta</button> <a class="text-button" href="{% url 'delete_account' %}">Excluir minha conta</a></form>
+</section>
+{% endif %}
+<h2>Álbuns de {{ person.username }}</h2><div class="grid">{% for album in own %}{% include "roleflix/album_card.html" %}{% empty %}<p class="muted">Nenhum álbum visível para você.</p>{% endfor %}</div>
+<h2>{% if person == user %}Compartilhados comigo{% else %}Compartilhados com {{ person.username }}{% endif %}</h2><div class="grid">{% for album in shared %}{% include "roleflix/album_card.html" %}{% empty %}<p class="muted">Nenhum álbum compartilhado.</p>{% endfor %}</div>{% endblock %}{% block scripts %}{% if person == user %}<script src="{% static 'js/avatar.js' %}" defer></script>{% endif %}{% endblock %}

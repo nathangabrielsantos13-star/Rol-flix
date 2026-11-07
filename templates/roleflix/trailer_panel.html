@@ -1,0 +1,31 @@
+{% if trailer or trailer_job or album.owner == user and album.media.exists %}
+<section class="trailer-panel"{% if album.cover %} style="background-image:linear-gradient(90deg,#090909 25%,rgba(9,9,9,.7)),url('{{ album.cover.url }}')"{% endif %}>
+  <p class="eyebrow">TRAILER EXCLUSIVO</p>
+  <h2>{{ album.title }}</h2>
+  {% if trailer_job.status == "pending" or trailer_job.status == "processing" %}
+    {% if album.owner == user %}
+    <div class="trailer-progress" data-trailer-status="{% url 'trailer_status' album.pk %}">
+      <p role="status"><span data-trailer-text>Gerando seu trailer…</span> <strong data-trailer-percent>{{ trailer_job.progress }}%</strong></p>
+      <progress max="100" value="{{ trailer_job.progress }}" aria-label="Progresso do trailer"></progress>
+      <a class="primary" href="{% url 'album_detail' album.pk %}" data-trailer-done hidden>▶ Ver trailer</a>
+    </div>
+    {% endif %}
+  {% elif trailer_job.status == "failed" and album.owner == user %}
+    <p class="message-error" role="alert">{{ trailer_job.error }}</p>
+  {% endif %}
+  <div class="trailer-actions">
+    {% if trailer %}
+      <button class="primary" type="button" data-trailer-open>▶ Assistir trailer</button>
+      <a class="secondary" href="{% url 'download_trailer' album.pk %}">⬇ Baixar</a>
+      <button class="secondary" type="button" data-trailer-share hidden>Compartilhar</button>
+    {% endif %}
+    {% if album.owner == user and album.media.exists %}
+      {% if trailer_job.status != "pending" and trailer_job.status != "processing" %}
+      <a class="{% if trailer %}secondary{% else %}primary{% endif %}" href="{% url 'create_trailer' album.pk %}">{% if trailer %}Criar novo trailer{% else %}Criar trailer{% endif %}</a>
+      {% endif %}
+    {% endif %}
+  </div>
+  {% if not trailer and not trailer_job %}<p class="muted">Vire este rolê em um trailer com música, transições, abertura e encerramento.</p>{% endif %}
+</section>
+{% if trailer %}{% include "roleflix/trailer_player.html" %}{% endif %}
+{% endif %}

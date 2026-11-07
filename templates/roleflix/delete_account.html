@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% block title %}Excluir conta | Rolêflix{% endblock %}{% block content %}
+<section class="form-panel">
+  <p class="eyebrow">ZONA DE PERIGO</p>
+  <h1>Excluir minha conta</h1>
+  <p>Isso não pode ser desfeito. Serão apagados:</p>
+  <ul>
+    <li>sua conta e sua foto de perfil;</li>
+    <li>os {{ album_count }} álbuns que você criou, com fotos, vídeos, trailers e ingressos, inclusive para quem tinha acesso a eles;</li>
+    <li>as {{ media_count }} fotos e vídeos que você enviou a álbuns de amigos.</li>
+  </ul>
+  <p class="muted">Quer guardar algo antes? Use <b>Baixar álbum</b> em cada álbum.</p>
+  <form method="post">{% csrf_token %}
+    <label for="confirmar">Digite EXCLUIR para confirmar</label>
+    <input id="confirmar" name="confirm" required autocomplete="off">
+    <button class="secondary danger" type="submit">Excluir minha conta para sempre</button>
+  </form>
+</section>
+{% endblock %}

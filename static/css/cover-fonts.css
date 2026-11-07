@@ -1,0 +1,7 @@
+/* Fontes do editor de capas, todas sob a SIL Open Font License. Ficam no projeto
+   porque o Canvas só desenha com a fonte já carregada e o resultado vira imagem. */
+@font-face{font-family:"Bebas Neue";src:url(../fonts/bebas-neue.woff2) format("woff2");font-display:swap}
+@font-face{font-family:"Anton";src:url(../fonts/anton.woff2) format("woff2");font-display:swap}
+@font-face{font-family:"Bangers";src:url(../fonts/bangers.woff2) format("woff2");font-display:swap}
+@font-face{font-family:"Playfair Display";src:url(../fonts/playfair-display.woff2) format("woff2");font-weight:400 900;font-display:swap}
+@font-face{font-family:"Inter";src:url(../fonts/inter.woff2) format("woff2");font-weight:100 900;font-display:swap}

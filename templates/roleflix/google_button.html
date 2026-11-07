@@ -1,0 +1,1 @@
+{% load socialaccount %}{% get_providers as socialaccount_providers %}<div class="or">ou</div>{% if socialaccount_providers %}<form method="post" action="{% provider_login_url 'google' %}">{% csrf_token %}<button class="google-button" type="submit">Continuar com Google</button></form>{% else %}<p class="muted">Login com Google ainda não configurado.</p>{% endif %}

@@ -1,0 +1,13 @@
+# O Caddy obtém e renova o certificado HTTPS sozinho. O domínio vem de ROLEFLIX_DOMAIN, no .env.
+{$ROLEFLIX_DOMAIN} {
+	encode gzip
+	# Um pouco acima do limite de 300 MB por vídeo.
+	request_body {
+		max_size 400MB
+	}
+	reverse_proxy web:8000
+}
+
+www.{$ROLEFLIX_DOMAIN} {
+	redir https://{$ROLEFLIX_DOMAIN}{uri} permanent
+}

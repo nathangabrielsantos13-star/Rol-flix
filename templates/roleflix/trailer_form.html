@@ -1,0 +1,50 @@
+{% extends "base.html" %}{% load static %}{% block title %}Criar trailer | Rolêflix{% endblock %}{% block content %}
+<section class="form-panel trailer-form">
+  <p class="eyebrow">TRAILER EXCLUSIVO</p>
+  <h1>{{ album.title }}</h1>
+  <p class="muted">O Rolêflix cuida das transições, do movimento nas fotos e dos cortes no ritmo da música, e adiciona a abertura e o encerramento.</p>
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}
+    {{ form.non_field_errors }}
+    <fieldset>
+      <legend>Estilo</legend>
+      <div class="option-row">{% for radio in form.style %}<label class="option-card">{{ radio.tag }}<span>{{ radio.choice_label }}</span></label>{% endfor %}</div>
+      {{ form.style.errors }}
+    </fieldset>
+    <fieldset>
+      <legend>Duração</legend>
+      <div class="option-row">{% for radio in form.duration %}<label class="option-card">{{ radio.tag }}<span>{{ radio.choice_label }}</span></label>{% endfor %}</div>
+      {{ form.duration.errors }}
+      <p class="muted small">Com poucas fotos, o trailer pode ficar mais curto: nada se repete só para preencher o tempo.</p>
+    </fieldset>
+    <fieldset>
+      <legend>Música de fundo</legend>
+      <label class="music-option"><input type="radio" name="music" value="auto"{% if form.music.value == "auto" %} checked{% endif %}><span>Combinar com o estilo</span></label>
+      {% for key, track in tracks.items %}
+      <label class="music-option"><input type="radio" name="music" value="{{ key }}"{% if form.music.value == key %} checked{% endif %}><span>{{ track.label }}</span><audio controls preload="none" src="{% static 'music/' %}{{ key }}.m4a" aria-label="Ouvir {{ track.label }}"></audio></label>
+      {% endfor %}
+      <label class="music-option"><input type="radio" name="music" value="upload" data-music-upload{% if form.music.value == "upload" %} checked{% endif %}><span>Enviar minha música</span></label>
+      <div data-music-file{% if form.music.value != "upload" %} hidden{% endif %}>
+        <input type="file" name="music_file" accept=".mp3,.m4a,.aac,.wav,.ogg,.flac,audio/*" aria-label="Arquivo da música">
+        <p class="muted small">Até 30 MB. Envie só músicas que você tem direito de usar. O arquivo é apagado depois que o trailer fica pronto.</p>
+      </div>
+      {{ form.music_file.errors }}
+    </fieldset>
+    <fieldset>
+      <legend>Fotos e vídeos</legend>
+      <p class="muted small">Desmarque o que não quer e use as setas para mudar a ordem. Se não couber tudo na duração, o Rolêflix escolhe trechos espalhados pela sua seleção.</p>
+      <ol class="trailer-items" data-trailer-items>
+        {% for item in items %}
+        <li>
+          <label><input type="checkbox" name="media" value="{{ item.pk }}" checked aria-label="Incluir item {{ forloop.counter }}">
+          {% if item.kind == "video" %}<video preload="metadata" muted src="{{ item.file.url }}#t=0.5"></video>{% else %}<img loading="lazy" src="{{ item.file.url }}" alt="{{ item.caption }}">{% endif %}</label>
+          <span class="item-kind">{{ item.get_kind_display }}</span>
+          <span class="item-move"><button type="button" class="secondary" data-move="-1" aria-label="Mover para antes">↑</button><button type="button" class="secondary" data-move="1" aria-label="Mover para depois">↓</button></span>
+        </li>
+        {% endfor %}
+      </ol>
+    </fieldset>
+    <button class="primary" type="submit">Gerar trailer</button>
+    <a class="secondary" href="{% url 'album_detail' album.pk %}">Cancelar</a>
+  </form>
+</section>
+{% endblock %}{% block scripts %}<script src="{% static 'js/trailer.js' %}" defer></script>{% endblock %}
