@@ -1,5 +1,5 @@
 # Publica no VPS a cada push na main. Fica desligado até a variável VPS_HOST existir no GitHub.
-# Configuração no DEPLOY.md, parte "Publicar sozinho a cada git push".
+# Configuração no DEPLOY-GRATIS.md, parte 8.
 name: Publicar no VPS
 
 on:
@@ -23,7 +23,7 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
       - name: Enviar e atualizar
         env:
-          DESTINO: root@${{ vars.VPS_HOST }}
+          DESTINO: ${{ vars.VPS_USER || 'root' }}@${{ vars.VPS_HOST }}
         run: |
           tar -czf /tmp/roleflix.tar.gz --exclude=.git .
           scp /tmp/roleflix.tar.gz "$DESTINO:/tmp/roleflix.tar.gz"

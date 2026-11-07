@@ -1,4 +1,5 @@
 #!/bin/sh
+export PATH="/usr/local/bin:/usr/bin:/bin:$PATH"  # O cron começa com um PATH mínimo.
 # Cópia diária do banco e dos arquivos, guardada por 7 dias. Agende no cron do servidor.
 # Fica no mesmo disco do site: copie também para fora, ou ative os backups da hospedagem.
 set -eu

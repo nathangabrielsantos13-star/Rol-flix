@@ -1,0 +1,7 @@
+# Estes arquivos rodam no Linux: com quebra de linha do Windows, deixam de funcionar.
+*.sh text eol=lf
+*.yml text eol=lf
+Caddyfile text eol=lf
+Dockerfile text eol=lf
+.env.production.example text eol=lf
+.dockerignore text eol=lf

@@ -1,5 +1,7 @@
 # Como publicar o Rolêflix
 
+Para publicar sem pagar nada, siga o [DEPLOY-GRATIS.md](DEPLOY-GRATIS.md). Este guia é para um VPS pago.
+
 Guia para colocar o site no ar em um VPS Linux com Ubuntu 24.04. Os comandos das partes 4 em diante rodam no servidor.
 
 ## 1. Contratar
@@ -10,7 +12,7 @@ Guia para colocar o site no ar em um VPS Linux com Ubuntu 24.04. Os comandos das
 
 ## 2. Apontar o domínio
 
-No painel do domínio, crie dois registros DNS do tipo **A**, um para o domínio e outro para `www`, com o IP do VPS.
+No painel do domínio, crie um registro DNS do tipo **A** para o domínio, com o IP do VPS.
 
 ## 3. Configurar o e-mail
 
