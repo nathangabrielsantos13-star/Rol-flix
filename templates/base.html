@@ -49,7 +49,7 @@
       <a class="nav-button" href="{% url 'create_album' %}" aria-label="Novo álbum">＋<span class="nav-button-label"> Novo álbum</span></a>
     {% else %}
       <a class="guest-link" href="{% url 'account_login' %}">Entrar</a>
-      <a class="nav-button" href="{% url 'signup' %}">Criar conta</a>
+      {% if not demo_mode %}<a class="nav-button" href="{% url 'signup' %}">Criar conta</a>{% endif %}
     {% endif %}
   </div>
   {% endwith %}

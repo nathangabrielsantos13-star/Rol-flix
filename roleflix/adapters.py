@@ -15,6 +15,9 @@ class EmailNaoEnviado(Exception):
 class ResilientAccountAdapter(DefaultAccountAdapter):
     """Uma falha do serviço de e-mail não pode dar erro depois de a conta já ter sido criada."""
 
+    def is_open_for_signup(self, request):
+        return not settings.ROLEFLIX_DEMO  # Na demonstração, a conta nova ficaria só em uma instância e sumiria.
+
     def send_mail(self, template_prefix, email, context):
         try:
             super().send_mail(template_prefix, email, context)
@@ -34,4 +37,4 @@ class InviteOnlySocialAdapter(DefaultSocialAccountAdapter):
     """Com convite ativo, o Google só entra em contas que já existem: senão ele furaria o código."""
 
     def is_open_for_signup(self, request, sociallogin):
-        return not settings.ROLEFLIX_INVITE_CODE
+        return not settings.ROLEFLIX_INVITE_CODE and not settings.ROLEFLIX_DEMO

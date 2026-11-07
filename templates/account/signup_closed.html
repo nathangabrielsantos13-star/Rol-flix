@@ -1,0 +1,3 @@
+{% extends "base.html" %}{% block title %}Cadastro fechado | Rolêflix{% endblock %}{% block content %}
+<section class="form-panel"><h1>Cadastro fechado na demonstração</h1><p class="muted">Aqui as contas novas não ficam guardadas. Use a conta de teste para conhecer o site.</p>{% include "account/demo_login_info.html" %}<a class="primary" href="{% url 'account_login' %}">Ir para o login</a></section>
+{% endblock %}

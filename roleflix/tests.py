@@ -2478,6 +2478,42 @@ class FalhaDeEmailTests(Base):
 
 
 class DemonstracaoTests(Base):
+    @override_settings(ROLEFLIX_DEMO=True)
+    def test_cadastro_fechado_em_todas_as_entradas(self):
+        for caminho in ("/cadastro/", "/accounts/signup/"):
+            self.assertContains(self.client.get(caminho), "Cadastro fechado na demonstração")
+            dados = {"first_name": "Novo", "email": "novo@x.com", "password1": SENHA, "password2": SENHA}
+            self.assertContains(self.client.post(caminho, dados), "Cadastro fechado na demonstração")
+        self.assertFalse(User.objects.filter(email="novo@x.com").exists())
+
+    @override_settings(ROLEFLIX_DEMO=True)
+    def test_paginas_nao_oferecem_cadastro_e_mostram_a_conta_de_teste(self):
+        r = self.client.get("/accounts/login/")
+        self.assertNotContains(r, "Criar cadastro")
+        self.assertNotContains(r, "Criar conta")
+        self.assertNotContains(self.client.get("/"), "/cadastro/")
+        self.assertContains(r, demo.DEMO_EMAIL)
+        self.assertContains(r, demo.DEMO_PASSWORD)
+
+    @override_settings(ROLEFLIX_DEMO=True)
+    def test_conta_de_teste_entra_com_email_e_senha(self):
+        demo.seed()
+        r = self.client.post("/accounts/login/", {"login": demo.DEMO_EMAIL, "password": demo.DEMO_PASSWORD})
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(self.client.get("/").context["user"].username, demo.DEMO_USERNAME)
+
+    @override_settings(ROLEFLIX_DEMO=True)
+    def test_conta_de_teste_tem_a_mesma_senha_em_todas_as_instancias(self):
+        primeira = demo.seed().password
+        User.objects.filter(username__in=["demo", "beatriz", "leo"]).delete()
+        self.assertEqual(demo.seed().password, primeira)
+
+    def test_fora_da_demonstracao_o_cadastro_continua_aberto_e_sem_conta_de_teste(self):
+        self.assertContains(self.client.get("/cadastro/"), "Criar sua conta")
+        r = self.client.get("/accounts/login/")
+        self.assertContains(r, "Criar cadastro")
+        self.assertNotContains(r, demo.DEMO_PASSWORD)
+
     def test_fora_da_vercel_nao_existe_faixa_nem_entrada(self):
         self.assertNotContains(self.client.get("/"), "Demonstração.")
         self.assertEqual(self.client.post("/demo/entrar/").status_code, 404)
@@ -2494,11 +2530,6 @@ class DemonstracaoTests(Base):
         self.client.logout()
         self.client.post("/demo/entrar/")
         self.assertEqual(Album.objects.count(), total)
-
-    @override_settings(ROLEFLIX_DEMO=True)
-    def test_conta_de_demonstracao_nao_tem_senha(self):
-        self.client.post("/demo/entrar/")
-        self.assertFalse(User.objects.get(username="demo").has_usable_password())
 
     @override_settings(ROLEFLIX_DEMO=True)
     def test_trailer_fica_desligado(self):
