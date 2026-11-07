@@ -2671,3 +2671,16 @@ class LoginGoogleTests(Base):
         self.client.post("/accounts/password/reset/", {"email": "nova@gmail.com"})
         self.assertEqual(len(mail.outbox), 1)
 
+
+
+class MensagemDeLoginTests(Base):
+    def test_entrar_nao_mostra_aviso(self):
+        r = self.client.post("/accounts/login/", {"login": "ana@x.com", "password": SENHA}, follow=True)
+        self.assertTrue(r.context["user"].is_authenticated)
+        self.assertEqual(list(r.context["messages"]), [])
+        self.assertNotContains(r, "Conectado")
+
+    def test_senha_errada_continua_avisando(self):
+        r = self.client.post("/accounts/login/", {"login": "ana@x.com", "password": "errada"})
+        self.assertFalse(r.context["user"].is_authenticated)
+        self.assertContains(r, "errorlist")
