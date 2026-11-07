@@ -7,12 +7,16 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 DEBUG = os.getenv("DJANGO_DEBUG", "0") == "1"
-HTTPS = os.getenv("DJANGO_HTTPS", "0") == "1"
-DATA_DIR = Path(os.getenv("ROLEFLIX_DATA_DIR", BASE_DIR))  # Banco e arquivos enviados: tudo que precisa de backup.
+# A Vercel define VERCEL=1 e só deixa gravar em /tmp, que some a cada reinício. Veja roleflix/demo.py.
+ROLEFLIX_DEMO = bool(os.getenv("VERCEL"))
+HTTPS = ROLEFLIX_DEMO or os.getenv("DJANGO_HTTPS", "0") == "1"
+DATA_DIR = Path(os.getenv("ROLEFLIX_DATA_DIR", "/tmp/roleflix" if ROLEFLIX_DEMO else BASE_DIR))
+DATA_DIR.mkdir(parents=True, exist_ok=True)  # Banco e arquivos enviados: tudo que precisa de backup.
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY")
 if not SECRET_KEY:
     raise ImproperlyConfigured("Defina DJANGO_SECRET_KEY no arquivo .env (veja .env.example).")
 hosts = [host.strip() for host in os.getenv("DJANGO_ALLOWED_HOSTS", "").split(",") if host.strip()]
+hosts += [os.environ[name] for name in ("VERCEL_URL", "VERCEL_BRANCH_URL", "VERCEL_PROJECT_PRODUCTION_URL") if os.getenv(name)]
 ALLOWED_HOSTS = [*hosts, "127.0.0.1", "localhost"]
 CSRF_TRUSTED_ORIGINS = [f"https://{host}" for host in hosts]
 
@@ -34,7 +38,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "allauth.account.middleware.AccountMiddleware",
 ]
-if not DEBUG:
+if not DEBUG and not ROLEFLIX_DEMO:  # Na Vercel, a CDN dela entrega os arquivos estáticos.
     MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
 ROOT_URLCONF = "config.urls"
 TEMPLATES = [{
@@ -74,7 +78,7 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
-if not DEBUG:
+if not DEBUG and not ROLEFLIX_DEMO:
     STORAGES = {
         "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
         "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
@@ -94,7 +98,7 @@ ACCOUNT_LOGIN_METHODS = {"email"}
 ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
 ACCOUNT_SIGNUP_FORM_CLASS = "roleflix.forms.SignupExtraForm"
 # Em desenvolvimento o e-mail só aparece no terminal, então a confirmação não pode bloquear a entrada.
-ACCOUNT_EMAIL_VERIFICATION = "optional" if DEBUG else "mandatory"
+ACCOUNT_EMAIL_VERIFICATION = "optional" if DEBUG else "none" if ROLEFLIX_DEMO else "mandatory"
 # O Google garante o e-mail: quem já tem conta com senha entra na mesma conta.
 # Se o e-mail da conta não estava confirmado, o allauth apaga a senha, o que barra quem o registrou antes do dono.
 SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
@@ -106,10 +110,10 @@ SOCIALACCOUNT_ADAPTER = "roleflix.adapters.InviteOnlySocialAdapter"
 ROLEFLIX_INVITE_CODE = os.getenv("ROLEFLIX_INVITE_CODE", "").strip()
 ROLEFLIX_CONTACT_EMAIL = os.getenv("ROLEFLIX_CONTACT_EMAIL", "").strip()
 # Recusa envios antes de o disco lotar, o que derrubaria o site inteiro.
-ROLEFLIX_MIN_FREE_DISK = 0 if DEBUG else 5 * 1024 ** 3
+ROLEFLIX_MIN_FREE_DISK = 0 if DEBUG or ROLEFLIX_DEMO else 5 * 1024 ** 3
 
 # Em desenvolvimento, os e-mails aparecem no terminal em vez de exigir um servidor SMTP.
-if DEBUG:
+if DEBUG or ROLEFLIX_DEMO:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 else:
     EMAIL_HOST = os.getenv("EMAIL_HOST", "")
@@ -120,6 +124,10 @@ else:
     EMAIL_TIMEOUT = 15
     DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Rolêflix <nao-responda@localhost>")
     SERVER_EMAIL = DEFAULT_FROM_EMAIL
+
+if ROLEFLIX_DEMO:
+    # Cada instância tem seu próprio banco temporário: a sessão precisa ficar no navegador.
+    SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
 
 if HTTPS:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")  # O Caddy é o único que fala com o Django.

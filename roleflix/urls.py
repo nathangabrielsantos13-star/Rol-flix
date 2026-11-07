@@ -46,6 +46,7 @@ urlpatterns = [
     path("conta/perfil/", views.edit_profile, name="edit_profile"),
     path("conta/foto/", views.change_avatar, name="change_avatar"),
     path("conta/excluir/", views.delete_account, name="delete_account"),
+    path("demo/entrar/", views.demo_login, name="demo_login"),
     path("privacidade/", views.privacy, name="privacy"),
     path("termos/", views.terms, name="terms"),
     path("ajuda/", views.tutorial, name="tutorial"),

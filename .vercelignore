@@ -1,0 +1,10 @@
+.env
+db.sqlite3
+media/
+data/
+backups/
+tools/
+deploy/
+Dockerfile
+docker-compose.yml
+Caddyfile

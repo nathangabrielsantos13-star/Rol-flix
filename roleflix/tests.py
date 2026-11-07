@@ -2473,3 +2473,39 @@ class FalhaDeEmailTests(Base):
                 r = self.client.post("/cadastro/", {"first_name": "Nova", "email": "nova@x.com", "password1": SENHA, "password2": SENHA})
         self.assertLess(r.status_code, 400)
         self.assertTrue(User.objects.filter(email="nova@x.com").exists())
+
+
+class DemonstracaoTests(Base):
+    def test_fora_da_vercel_nao_existe_faixa_nem_entrada(self):
+        self.assertNotContains(self.client.get("/"), "Demonstração.")
+        self.assertEqual(self.client.post("/demo/entrar/").status_code, 404)
+
+    @override_settings(ROLEFLIX_DEMO=True)
+    def test_entrar_cria_os_exemplos_uma_vez_so(self):
+        self.assertContains(self.client.get("/"), "Entrar na demonstração")
+        self.assertRedirects(self.client.post("/demo/entrar/"), "/")
+        r = self.client.get("/")
+        self.assertContains(r, "Não envie fotos pessoais")
+        self.assertNotContains(r, "Entrar na demonstração")
+        self.assertTrue(r.context["featured"])
+        total = Album.objects.count()
+        self.client.logout()
+        self.client.post("/demo/entrar/")
+        self.assertEqual(Album.objects.count(), total)
+
+    @override_settings(ROLEFLIX_DEMO=True)
+    def test_conta_de_demonstracao_nao_tem_senha(self):
+        self.client.post("/demo/entrar/")
+        self.assertFalse(User.objects.get(username="demo").has_usable_password())
+
+    @override_settings(ROLEFLIX_DEMO=True)
+    def test_trailer_fica_desligado(self):
+        album = self.album()
+        foto = MediaItem.objects.create(album=album, kind="photo", uploaded_by=self.a, file=png("f.png"))
+        self.client.force_login(self.a)
+        dados = {"style": "fun", "duration": "30", "music": "auto", "media": [foto.pk]}
+        with patch("roleflix.trailers.subprocess.Popen") as popen:
+            r = self.client.post(f"/album/{album.pk}/trailer/novo/", dados, follow=True)
+        popen.assert_not_called()
+        self.assertContains(r, "trailers ficam desligados")
+        self.assertFalse(album.trailers.exists())

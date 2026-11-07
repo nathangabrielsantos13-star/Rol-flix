@@ -6,7 +6,7 @@ import zipfile
 
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import logout
+from django.contrib.auth import login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db.models import Q
@@ -17,7 +17,7 @@ from django.utils import timezone
 from django.utils.formats import date_format
 from django.utils.text import slugify
 from django.views.decorators.http import require_POST
-from . import accounts, covers, homepage, retrospective, tickets, trailers
+from . import accounts, covers, demo, homepage, retrospective, tickets, trailers
 from .forms import AlbumForm, AvatarForm, CollectionForm, MediaUploadForm, ProfileForm, FriendSearchForm, TicketForm, TrailerForm, media_kind
 from .models import Album, AlbumParticipant, AlbumView, Collection, CoverDesign, Favorite, FriendRequest, MediaItem, Notification, Profile, Ticket, Trailer
 from .places import search_places
@@ -371,6 +371,9 @@ def my_collection(request, pk):
 @login_required
 def create_trailer(request, pk):
     album = get_object_or_404(Album, pk=pk, owner=request.user)
+    if settings.ROLEFLIX_DEMO:
+        messages.info(request, "Os trailers ficam desligados nesta demonstração.")
+        return redirect("album_detail", pk=pk)
     items = list(album.media.order_by("created_at", "pk"))
     if not items:
         messages.error(request, "Adicione fotos ou vídeos antes de criar o trailer.")
@@ -673,6 +676,13 @@ def delete_account(request):
         "album_count": Album.objects.filter(owner=request.user).count(),
         "media_count": MediaItem.objects.filter(uploaded_by=request.user).exclude(album__owner=request.user).count(),
     })
+
+@require_POST
+def demo_login(request):
+    if not settings.ROLEFLIX_DEMO:
+        raise Http404
+    login(request, demo.seed(), backend="django.contrib.auth.backends.ModelBackend")
+    return redirect("home")
 
 def privacy(request):
     return render(request, "roleflix/privacy.html", {"contact_email": settings.ROLEFLIX_CONTACT_EMAIL})
