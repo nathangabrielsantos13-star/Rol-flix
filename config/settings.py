@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "roleflix",
 ]
 MIDDLEWARE = [
+    "roleflix.middleware.DemoSetupMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -40,7 +41,7 @@ MIDDLEWARE = [
     "allauth.account.middleware.AccountMiddleware",
 ]
 if not DEBUG and not ROLEFLIX_DEMO:  # Na Vercel, a CDN dela entrega os arquivos estáticos.
-    MIDDLEWARE.insert(1, "whitenoise.middleware.WhiteNoiseMiddleware")
+    MIDDLEWARE.insert(2, "whitenoise.middleware.WhiteNoiseMiddleware")
 ROOT_URLCONF = "config.urls"
 TEMPLATES = [{
     "BACKEND": "django.template.backends.django.DjangoTemplates",

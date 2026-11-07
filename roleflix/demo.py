@@ -23,13 +23,23 @@ ALBUMS = [
 
 def cover(position):
     """Recorta a paisagem do site: assim a demonstração não depende de nenhuma foto de verdade."""
-    with Image.open(finders.find("img/hero-landscape.jpg")) as source:
+    path = finders.find("img/hero-landscape.jpg")
+    if path is None:  # A imagem pode não entrar no pacote do servidor: um fundo liso não pode impedir a demonstração.
+        return solid_cover(position)
+    with Image.open(path) as source:
         image = source.convert("RGB")
     width, height = image.size
     left, top = int(width * position[0]), int(height * position[1])
     crop = image.crop((left, top, left + int(width * 0.55), top + int(height * 0.6))).resize((1000, 620))
     buffer = io.BytesIO()
     crop.save(buffer, "JPEG", quality=80)
+    return ContentFile(buffer.getvalue(), name="demo.jpg")
+
+
+def solid_cover(position):
+    image = Image.new("RGB", (1000, 620), (70 + int(position[0] * 300), 40, 50 + int(position[1] * 300)))
+    buffer = io.BytesIO()
+    image.save(buffer, "JPEG", quality=80)
     return ContentFile(buffer.getvalue(), name="demo.jpg")
 
 

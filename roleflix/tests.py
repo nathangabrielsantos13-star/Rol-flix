@@ -21,7 +21,8 @@ from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from PIL import Image
 
-from . import accounts, covers, homepage, tickets, trailers
+from . import accounts, covers, demo, homepage, tickets, trailers
+from .middleware import DemoSetupMiddleware
 from .models import Album, AlbumParticipant, Collection, CoverDesign, Favorite, FriendRequest, MediaItem, Notification, Profile, Ticket, Trailer
 
 TMP = tempfile.mkdtemp()
@@ -2509,3 +2510,38 @@ class DemonstracaoTests(Base):
         popen.assert_not_called()
         self.assertContains(r, "trailers ficam desligados")
         self.assertFalse(album.trailers.exists())
+
+
+class PreparoDaDemonstracaoTests(Base):
+    def setUp(self):
+        super().setUp()
+        DemoSetupMiddleware.ready = False
+        self.addCleanup(setattr, DemoSetupMiddleware, "ready", False)
+
+    def test_fora_da_demonstracao_nao_prepara_nada(self):
+        with patch("roleflix.demo.prepare") as prepare:
+            self.client.get("/")
+        prepare.assert_not_called()
+
+    @override_settings(ROLEFLIX_DEMO=True)
+    def test_prepara_na_primeira_visita_e_so_uma_vez(self):
+        with patch("roleflix.demo.prepare") as prepare:
+            self.assertEqual(self.client.get("/").status_code, 200)
+            self.client.get("/termos/")
+        prepare.assert_called_once()
+
+    @override_settings(ROLEFLIX_DEMO=True)
+    def test_falha_no_preparo_mostra_a_causa_e_tenta_de_novo(self):
+        with patch("roleflix.demo.prepare", side_effect=OSError("disco cheio")):
+            with self.assertLogs("roleflix.middleware", level="ERROR"):
+                r = self.client.get("/")
+        self.assertEqual(r.status_code, 503)
+        self.assertIn("OSError: disco cheio", r.content.decode())
+        with patch("roleflix.demo.prepare"):
+            self.assertEqual(self.client.get("/").status_code, 200)
+
+    @override_settings(ROLEFLIX_DEMO=True)
+    def test_sem_a_imagem_da_paisagem_a_demonstracao_sobe(self):
+        with patch("roleflix.demo.finders.find", return_value=None):
+            demo.seed()
+        self.assertTrue(Album.objects.filter(title="Guaratuba 2026").exists())
