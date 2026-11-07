@@ -4,8 +4,11 @@ import os
 import django
 from django.core.management import call_command
 
+from config.conexoes import reconhecer
+
 
 def main():
+    reconhecer(os.environ)
     if not os.getenv("DATABASE_URL"):
         print("Sem DATABASE_URL: nada a preparar.")
         return

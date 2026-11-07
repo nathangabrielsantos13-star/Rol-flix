@@ -28,6 +28,7 @@ from django.utils import timezone
 from PIL import Image
 
 from vercel.blob import sync as sdk_blob
+from config.conexoes import reconhecer
 
 from . import accounts, covers, demo, homepage, tickets, trailers
 from .middleware import DemoSetupMiddleware
@@ -2925,6 +2926,25 @@ class ModosDoSiteTests(TestCase):
         self.assertEqual(storage, "roleflix.storage.BlobStorage")
         self.assertEqual(verificacao, "none")  # Sem serviço de e-mail, ninguém conseguiria confirmar.
         self.assertEqual(cache, "DatabaseCache")
+
+    def test_aceita_variaveis_com_prefixo_da_integracao(self):
+        self.assertFalse(self.configuracao(VERCEL="1", STORAGE_DATABASE_URL=self.URL, STORAGE_BLOB_READ_WRITE_TOKEN="t")[0])
+        self.assertFalse(self.configuracao(VERCEL="1", POSTGRES_URL=self.URL, BLOB_STORE_ID="s")[0])
+
+    def test_nome_exato_vence_o_prefixo(self):
+        env = {"DATABASE_URL": "certo", "STORAGE_DATABASE_URL": "outro", "POSTGRES_PRISMA_URL": "x"}
+        reconhecer(env)
+        self.assertEqual(env["DATABASE_URL"], "certo")
+        self.assertNotIn("DATABASE_URL_UNPOOLED", env)
+
+    def test_conexao_direta_com_prefixo_nao_vira_a_conexao_principal(self):
+        env = {"STORAGE_DATABASE_URL_UNPOOLED": "direta", "STORAGE_DATABASE_URL": "pool", "NEON_POSTGRES_URL_NON_POOLING": ""}
+        reconhecer(env)
+        self.assertEqual((env["DATABASE_URL"], env["DATABASE_URL_UNPOOLED"]), ("pool", "direta"))
+
+    @override_settings(ROLEFLIX_DEMO=True, ROLEFLIX_DEMO_FALTA=["arquivos"])
+    def test_demonstracao_indica_o_que_falta_conectar(self):
+        self.assertContains(self.client.get("/accounts/login/"), 'data-falta="arquivos"')
 
     def test_com_email_ligado_exige_confirmacao(self):
         self.assertEqual(self.configuracao(VERCEL="1", DATABASE_URL=self.URL, BLOB_STORE_ID="s", EMAIL_HOST="smtp.x")[4], "mandatory")

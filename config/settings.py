@@ -5,8 +5,11 @@ from urllib.parse import parse_qsl, unquote, urlsplit
 from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
+from config.conexoes import reconhecer
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
+reconhecer(os.environ)
 DEBUG = os.getenv("DJANGO_DEBUG", "0") == "1"
 # A Vercel define VERCEL=1 e só deixa gravar em /tmp, que some a cada reinício.
 ROLEFLIX_SERVERLESS = bool(os.getenv("VERCEL"))
@@ -14,6 +17,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", "")  # Neon. Sem ele, o banco é SQLite
 BLOB_CONNECTED = bool(os.getenv("BLOB_READ_WRITE_TOKEN") or os.getenv("BLOB_STORE_ID"))
 # Só guarda de verdade com banco e arquivos ligados: com um só, parte dos dados sumiria. Veja roleflix/demo.py.
 ROLEFLIX_DEMO = ROLEFLIX_SERVERLESS and not (DATABASE_URL and BLOB_CONNECTED)
+ROLEFLIX_DEMO_FALTA = [nome for nome, ligado in (("banco", DATABASE_URL), ("arquivos", BLOB_CONNECTED)) if not ligado] if ROLEFLIX_DEMO else []
 HTTPS = ROLEFLIX_SERVERLESS or os.getenv("DJANGO_HTTPS", "0") == "1"
 DATA_DIR = Path(os.getenv("ROLEFLIX_DATA_DIR", "/tmp/roleflix" if ROLEFLIX_SERVERLESS else BASE_DIR))
 DATA_DIR.mkdir(parents=True, exist_ok=True)  # Banco e arquivos enviados: tudo que precisa de backup.
