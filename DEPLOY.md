@@ -89,6 +89,25 @@ tar -xzf /root/roleflix-deploy.tar.gz
 docker compose up -d --build
 ```
 
+## Publicar sozinho a cada git push
+
+Depois que o site estiver no ar, o GitHub pode atualizar o servidor sozinho. Fica assim:
+
+1. No servidor, crie uma chave só para isso:
+
+   ```sh
+   ssh-keygen -t ed25519 -f /root/deploy_key -N ""
+   cat /root/deploy_key.pub >> /root/.ssh/authorized_keys
+   cat /root/deploy_key
+   ```
+
+2. No GitHub, abra **Settings → Secrets and variables → Actions**.
+3. Em **Secrets**, crie `VPS_SSH_KEY` com o conteúdo de `deploy_key`, e `VPS_KNOWN_HOSTS` com a saída de `ssh-keyscan IP_DO_SERVIDOR`, rodado no seu computador.
+4. Em **Variables**, crie `VPS_HOST` com o IP do servidor.
+5. Apague a chave do servidor: `rm /root/deploy_key`.
+
+A partir daí, cada `git push` publica o site. Acompanhe em **Actions**, no GitHub. Se o site passar para o VPS, desligue a Vercel para ela não publicar a demonstração junto.
+
 ## Login com Google (opcional)
 
 No Google Cloud Console, crie credenciais OAuth com o redirecionamento `https://SEU-DOMINIO/accounts/google/login/callback/`. Coloque os dados no `.env` e rode `docker compose up -d`. Com o código de convite ativo, o Google só entra em contas que já existem.

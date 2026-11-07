@@ -2561,3 +2561,113 @@ class DemonstracaoEntreInstanciasTests(Base):
         demo.seed()
         self.assertEqual(User.objects.get(username="demo").password, senha)
         self.assertEqual(sorted(Album.objects.values_list("cover", flat=True)), capas)
+
+
+class RecuperarSenhaTests(Base):
+    NOVA = "OutraSenhaForte!456"
+
+    def pedir(self, email="ana@x.com"):
+        return self.client.post("/accounts/password/reset/", {"email": email})
+
+    def link(self):
+        return re.search(r"https?://\S+/accounts/password/reset/key/\S+", mail.outbox[-1].body).group(0)
+
+    def test_login_tem_o_link(self):
+        self.assertContains(self.client.get("/accounts/login/"), "Esqueceu a senha?")
+        self.assertContains(self.client.get("/accounts/password/reset/"), "Enviar link")
+
+    def test_email_em_portugues_com_link_limpo(self):
+        self.assertRedirects(self.pedir(), "/accounts/password/reset/done/")
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(mail.outbox[0].subject, "Recupere sua senha do Rolêflix")
+        self.assertEqual(mail.outbox[0].to, ["ana@x.com"])
+        self.assertTrue(self.link().endswith("/"))
+
+    def test_fluxo_completo_troca_a_senha(self):
+        self.pedir()
+        r = self.client.get(self.link(), follow=True)
+        self.assertContains(r, "Criar senha nova")
+        destino = r.redirect_chain[-1][0]
+        r = self.client.post(destino, {"password1": self.NOVA, "password2": self.NOVA}, follow=True)
+        self.assertContains(r, "Senha alterada!")
+        self.a.refresh_from_db()
+        self.assertTrue(self.a.check_password(self.NOVA))
+        self.assertFalse(self.a.check_password(SENHA))
+
+    def test_link_so_vale_uma_vez(self):
+        self.pedir()
+        url = self.link()
+        destino = self.client.get(url, follow=True).redirect_chain[-1][0]
+        self.client.post(destino, {"password1": self.NOVA, "password2": self.NOVA})
+        self.client.logout()
+        self.assertContains(self.client.get(url, follow=True), "Link inválido")
+
+    def test_link_adulterado_e_recusado(self):
+        self.assertContains(self.client.get("/accounts/password/reset/key/1-abc-def/", follow=True), "Link inválido")
+
+    def test_email_sem_conta_nao_recebe_nada_e_nao_revela(self):
+        r = self.pedir("ninguem@x.com")
+        self.assertRedirects(r, "/accounts/password/reset/done/")
+        self.assertEqual(mail.outbox, [])
+
+    def test_servico_de_email_fora_do_ar_nao_derruba_a_pagina(self):
+        with patch("django.core.mail.backends.locmem.EmailBackend.send_messages", side_effect=OSError("sem conexão")):
+            with self.assertLogs("roleflix.adapters", level="ERROR"):
+                r = self.pedir()
+        self.assertEqual(r.status_code, 302)
+
+    @override_settings(ROLEFLIX_DEMO=True)
+    def test_demonstracao_avisa_quando_nao_envia_email(self):
+        DemoSetupMiddleware.ready = True
+        self.addCleanup(setattr, DemoSetupMiddleware, "ready", False)
+        self.assertContains(self.client.get("/accounts/password/reset/"), "envio de e-mails está desligado")
+
+
+@override_settings(SOCIALACCOUNT_PROVIDERS=GOOGLE)
+class LoginGoogleTests(Base):
+    def entrar_pelo_google(self, email="nova@gmail.com", verificado=True, uid="108"):
+        from allauth.account.models import EmailAddress
+        from allauth.core import context
+        from allauth.socialaccount.helpers import complete_social_login
+        from allauth.socialaccount.models import SocialAccount, SocialLogin
+        from django.contrib.auth.models import AnonymousUser
+        from django.contrib.messages.storage.fallback import FallbackStorage
+        from django.contrib.sessions.middleware import SessionMiddleware
+        from django.test import RequestFactory
+        request = RequestFactory().get("/accounts/google/login/callback/")
+        SessionMiddleware(lambda r: None).process_request(request)
+        request.session.save()
+        request.user = AnonymousUser()
+        request._messages = FallbackStorage(request)
+        conta = SocialAccount(provider="google", uid=uid, extra_data={"email": email, "given_name": "Nova", "name": "Nova Pessoa"})
+        login = SocialLogin(user=User(email=email, first_name="Nova"), account=conta, email_addresses=[EmailAddress(email=email, verified=verificado, primary=True)])
+        login.state = {"process": "login", "next": "/"}
+        with context.request_context(request):
+            login.provider = conta.get_provider(request)
+            return complete_social_login(request, login)
+
+    @override_settings(ACCOUNT_EMAIL_VERIFICATION="mandatory")
+    def test_primeiro_acesso_cria_conta_sem_pedir_confirmacao(self):
+        r = self.entrar_pelo_google()
+        self.assertEqual(r.status_code, 302)
+        self.assertNotIn("confirm", r["Location"])
+        pessoa = User.objects.get(email="nova@gmail.com")
+        self.assertEqual(pessoa.first_name, "Nova")
+        self.assertFalse(pessoa.has_usable_password())
+
+    def test_conta_com_o_mesmo_email_entra_na_mesma_pessoa(self):
+        total = User.objects.count()
+        self.entrar_pelo_google(email=self.a.email)
+        self.assertEqual(User.objects.count(), total)
+        self.assertTrue(self.a.socialaccount_set.exists())
+
+    @override_settings(ROLEFLIX_INVITE_CODE="turma-2026")
+    def test_convite_ativo_barra_conta_nova(self):
+        self.entrar_pelo_google()
+        self.assertFalse(User.objects.filter(email="nova@gmail.com").exists())
+
+    def test_quem_entrou_pelo_google_pode_criar_senha_pelo_recuperar(self):
+        self.entrar_pelo_google()
+        self.client.post("/accounts/password/reset/", {"email": "nova@gmail.com"})
+        self.assertEqual(len(mail.outbox), 1)
+

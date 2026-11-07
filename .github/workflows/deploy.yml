@@ -1,0 +1,30 @@
+# Publica no VPS a cada push na main. Fica desligado até a variável VPS_HOST existir no GitHub.
+# Configuração no DEPLOY.md, parte "Publicar sozinho a cada git push".
+name: Publicar no VPS
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  publicar:
+    if: ${{ vars.VPS_HOST != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Preparar acesso ao servidor
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/id_ed25519
+      - name: Enviar e atualizar
+        env:
+          DESTINO: root@${{ vars.VPS_HOST }}
+        run: |
+          tar -czf /tmp/roleflix.tar.gz --exclude=.git .
+          scp /tmp/roleflix.tar.gz "$DESTINO:/tmp/roleflix.tar.gz"
+          ssh "$DESTINO" 'cd /opt/roleflix && tar -xzf /tmp/roleflix.tar.gz && docker compose up -d --build && docker compose logs --tail=5 web'

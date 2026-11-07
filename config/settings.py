@@ -97,6 +97,11 @@ AUTHENTICATION_BACKENDS = [
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
 ACCOUNT_LOGIN_METHODS = {"email"}
+# Sem isto, os links de e-mail e do Google sairiam em http, mesmo com o site em https.
+ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https" if HTTPS else "http"
+ACCOUNT_EMAIL_SUBJECT_PREFIX = ""
+# Sem isto, qualquer pessoa faria o site mandar e-mail para endereços sem conta.
+ACCOUNT_EMAIL_UNKNOWN_ACCOUNTS = False
 ACCOUNT_SIGNUP_FIELDS = ["email*", "password1*", "password2*"]
 ACCOUNT_SIGNUP_FORM_CLASS = "roleflix.forms.SignupExtraForm"
 # Em desenvolvimento o e-mail só aparece no terminal, então a confirmação não pode bloquear a entrada.
@@ -115,7 +120,8 @@ ROLEFLIX_CONTACT_EMAIL = os.getenv("ROLEFLIX_CONTACT_EMAIL", "").strip()
 ROLEFLIX_MIN_FREE_DISK = 0 if DEBUG or ROLEFLIX_DEMO else 5 * 1024 ** 3
 
 # Em desenvolvimento, os e-mails aparecem no terminal em vez de exigir um servidor SMTP.
-if DEBUG or ROLEFLIX_DEMO:
+ROLEFLIX_EMAIL_ENABLED = bool(os.getenv("EMAIL_HOST"))
+if DEBUG or (ROLEFLIX_DEMO and not ROLEFLIX_EMAIL_ENABLED):
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 else:
     EMAIL_HOST = os.getenv("EMAIL_HOST", "")
