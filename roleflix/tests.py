@@ -2545,3 +2545,19 @@ class PreparoDaDemonstracaoTests(Base):
         with patch("roleflix.demo.finders.find", return_value=None):
             demo.seed()
         self.assertTrue(Album.objects.filter(title="Guaratuba 2026").exists())
+
+
+class DemonstracaoEntreInstanciasTests(Base):
+    @override_settings(ROLEFLIX_DEMO=True)
+    def test_conta_e_arquivos_sao_iguais_em_qualquer_instancia(self):
+        demo.seed()
+        senha = User.objects.get(username="demo").password
+        capas = sorted(Album.objects.values_list("cover", flat=True))
+        for album in Album.objects.all():
+            album.cover.storage.delete(album.cover.name)
+        for item in MediaItem.objects.all():
+            item.file.storage.delete(item.file.name)
+        User.objects.filter(username__in=["demo", "beatriz", "leo"]).delete()
+        demo.seed()
+        self.assertEqual(User.objects.get(username="demo").password, senha)
+        self.assertEqual(sorted(Album.objects.values_list("cover", flat=True)), capas)
