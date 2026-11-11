@@ -3,8 +3,8 @@
   <p class="eyebrow">CENTRAL DE AJUDA</p>
   <h1>Como usar o Rolêflix</h1>
   <div class="tutorial-progress" data-tutorial-progress hidden>
-    <p role="status" data-tutorial-count>Etapa 1 de 7</p>
-    <progress max="7" value="1" aria-label="Progresso do tutorial"></progress>
+    <p role="status" data-tutorial-count>Etapa 1 de 9</p>
+    <progress max="9" value="1" aria-label="Progresso do tutorial"></progress>
   </div>
 
   <article class="tutorial-step" data-step>
@@ -24,7 +24,7 @@
       <p class="eyebrow">ETAPA 02</p>
       <h2>Adicionando fotos e vídeos</h2>
       <p>Abra o álbum, vá até <b>Adicionar fotos e vídeos</b>, selecione os arquivos e clique em <b>Enviar memórias</b>. Dá para enviar vários de uma vez. Aguarde o carregamento terminar antes de sair da página.</p>
-      <p class="muted">Cada foto pode ter até 20 MB e cada vídeo até 300 MB. Quem tem acesso ao álbum também pode enviar as próprias fotos.</p>
+      <p class="muted">{% if max_photo_mb %}Cada arquivo pode ter até {{ max_photo_mb }} MB. As fotos são reduzidas sozinhas antes do envio.{% else %}Cada foto pode ter até 20 MB e cada vídeo até 300 MB.{% endif %} Quem tem acesso ao álbum também pode enviar as próprias fotos.</p>
       <a class="text-link" href="{% url 'my_albums' %}">Abrir meus álbuns</a>
     </div>
   </article>
@@ -77,16 +77,39 @@
       <p class="eyebrow">ETAPA 07</p>
       <h2>Explorando suas memórias</h2>
       <p>Use a <b>lupa</b> para buscar por título ou pessoa, e o <b>Mapa</b> para ver por onde seus rolês passaram. Na página inicial, as <b>Recordações</b> trazem álbuns de outros anos, e o botão <b>Favoritar</b> de cada álbum coloca seus preferidos em <b>Meus favoritos</b>.</p>
-      <p class="muted">No perfil, Minhas retrospectivas resume cada ano. Em cada álbum, <b>Gerar ingresso</b> cria uma lembrança para colecionar em Meus ingressos, até para rolês que ainda vão acontecer.</p>
+      <p class="muted">Seus favoritos aparecem em <b>Meus favoritos</b>, na página inicial, e também ficam marcados em cada álbum.</p>
       <a class="text-link" href="{% url 'album_map' %}">Abrir o mapa</a>
+    </div>
+  </article>
+
+  <article class="tutorial-step" data-step>
+    <svg class="tutorial-art" viewBox="0 0 320 180" aria-hidden="true"><rect width="320" height="180" rx="10" fill="#0f0f0f"/><g transform="rotate(-6 160 90)"><path d="M40 52h240v22a16 16 0 0 0 0 32v22H40v-22a16 16 0 0 0 0-32z" fill="#1c1c1c" stroke="#e50914" stroke-width="2"/><rect x="52" y="62" width="70" height="56" rx="4" fill="#e50914" opacity=".85"/><rect x="134" y="66" width="96" height="12" rx="3" fill="#fff"/><rect x="134" y="86" width="70" height="7" rx="3" fill="#777"/><rect x="134" y="100" width="56" height="7" rx="3" fill="#777"/><path d="M238 56v68" stroke="#555" stroke-width="2" stroke-dasharray="4 5"/><text x="259" y="94" fill="#e50914" font-size="12" font-family="sans-serif" font-weight="700" text-anchor="middle" transform="rotate(-90 259 90)">Nº 001</text></g><text x="276" y="40" fill="#ffd34d" font-size="22" font-family="sans-serif">★</text></svg>
+    <div>
+      <p class="eyebrow">ETAPA 08</p>
+      <h2>Gerando ingressos</h2>
+      <p>Abra um álbum e, na parte <b>Ingressos</b>, clique em <b>Gerar ingresso</b>. Escolha o modelo (<b>Cinema clássico</b>, <b>Viagem vintage</b>, <b>Premium</b> ou <b>Retrô</b>), escreva a frase do ingresso e, se quiser, use uma cor sua nos detalhes. A prévia muda na hora. Depois, é só clicar em <b>Gerar ingresso</b> no fim da página.</p>
+      <p class="muted">Cada ingresso ganha um número só dele. Baixe em <b>PNG</b> para postar ou em <b>PDF</b> para imprimir, use <b>Compartilhar</b> no celular e marque um como <b>Favorito</b> em cada álbum. Se o rolê ainda vai acontecer, o ingresso sai como <b>pré-estreia</b>. Você pode ter até 12 ingressos por álbum, e todos ficam guardados em <b>Meus ingressos</b>, no seu perfil.</p>
+      <a class="text-link" href="{% url 'my_tickets' %}">Ver meus ingressos</a>
+    </div>
+  </article>
+
+  <article class="tutorial-step" data-step>
+    <svg class="tutorial-art" viewBox="0 0 320 180" aria-hidden="true"><rect width="320" height="180" rx="10" fill="#0f0f0f"/><circle cx="92" cy="74" r="30" fill="#2a2a2a"/><circle cx="92" cy="66" r="11" fill="#777"/><path d="M72 94c4-12 12-16 20-16s16 4 20 16" fill="#777"/><rect x="56" y="118" width="72" height="9" rx="4" fill="#fff"/><rect x="66" y="134" width="52" height="7" rx="3" fill="#555"/><path d="M196 58a22 22 0 0 1 44 0v20l8 12h-60l8-12z" fill="#2a2a2a" stroke="#777" stroke-width="2"/><circle cx="218" cy="98" r="6" fill="#777"/><circle cx="242" cy="48" r="9" fill="#e50914"/><rect x="180" y="118" width="80" height="34" rx="8" fill="#1c1c1c" stroke="#333"/><path d="M220 126v12m-6-6 6 6 6-6" stroke="#e50914" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
+    <div>
+      <p class="eyebrow">ETAPA 09</p>
+      <h2>Seu perfil, avisos e o app</h2>
+      <p>O <b>sino</b>, no topo, mostra quando alguém marca você em um álbum. Em <b>Amigos</b>, você aceita ou recusa pedidos de amizade. Toque na sua foto e abra <b>Meu perfil</b> para trocar a foto, usar <b>Editar perfil</b> e ver <b>Minhas retrospectivas</b>, o resumo de cada ano.</p>
+      <p class="muted">No celular, o menu da sua foto tem <b>Instalar app</b>, que coloca o Rolêflix na tela inicial como um aplicativo. Este tutorial fica sempre disponível no seu perfil, em <b>Central de ajuda</b>.</p>
+      <a class="text-link" href="{% url 'profile' user.username %}">Abrir meu perfil</a>
     </div>
   </article>
 
   <div class="tutorial-controls">
     <button class="secondary" type="button" data-tutorial-back hidden>Anterior</button>
     <button class="primary" type="button" data-tutorial-next hidden>Próximo</button>
-    <form method="post" action="{% url 'hide_tutorial' %}" data-tutorial-finish>{% csrf_token %}<input type="hidden" name="to" value="profile"><button class="primary" type="submit">Concluir tutorial</button></form>
-    {% if not tutorial_hidden %}<form class="tutorial-skip" method="post" action="{% url 'hide_tutorial' %}">{% csrf_token %}<input type="hidden" name="to" value="home"><button class="text-button" type="submit">Não mostrar novamente</button></form>{% endif %}
+    <a class="primary" href="{{ next_url }}" data-tutorial-finish>Concluir tutorial</a>
+    {% if not tutorial_hidden %}<a class="text-button" href="{{ next_url }}">Pular por agora</a>
+    <form class="tutorial-skip" method="post" action="{% url 'hide_tutorial' %}">{% csrf_token %}<input type="hidden" name="next" value="{{ next_url }}"><button class="text-button" type="submit">Não mostrar novamente</button></form>{% endif %}
   </div>
 </section>
 {% endblock %}{% block scripts %}<script src="{% static 'js/tutorial.js' %}" defer></script>{% endblock %}

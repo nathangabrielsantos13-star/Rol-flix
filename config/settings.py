@@ -15,9 +15,6 @@ DEBUG = os.getenv("DJANGO_DEBUG", "0") == "1"
 ROLEFLIX_SERVERLESS = bool(os.getenv("VERCEL"))
 DATABASE_URL = os.getenv("DATABASE_URL", "")  # Neon. Sem ele, o banco é SQLite.
 BLOB_CONNECTED = bool(os.getenv("BLOB_READ_WRITE_TOKEN") or os.getenv("BLOB_STORE_ID"))
-# Só guarda de verdade com banco e arquivos ligados: com um só, parte dos dados sumiria. Veja roleflix/demo.py.
-ROLEFLIX_DEMO = ROLEFLIX_SERVERLESS and not (DATABASE_URL and BLOB_CONNECTED)
-ROLEFLIX_DEMO_FALTA = [nome for nome, ligado in (("banco", DATABASE_URL), ("arquivos", BLOB_CONNECTED)) if not ligado] if ROLEFLIX_DEMO else []
 HTTPS = ROLEFLIX_SERVERLESS or os.getenv("DJANGO_HTTPS", "0") == "1"
 DATA_DIR = Path(os.getenv("ROLEFLIX_DATA_DIR", "/tmp/roleflix" if ROLEFLIX_SERVERLESS else BASE_DIR))
 DATA_DIR.mkdir(parents=True, exist_ok=True)  # Banco e arquivos enviados: tudo que precisa de backup.
@@ -39,7 +36,6 @@ INSTALLED_APPS = [
     "roleflix",
 ]
 MIDDLEWARE = [
-    "roleflix.middleware.DemoSetupMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -91,7 +87,7 @@ else:
         }
 if not DEBUG:
     # Compartilhado entre os processos: os limites de tentativas de login precisam valer para todos.
-    if ROLEFLIX_SERVERLESS and not ROLEFLIX_DEMO:
+    if ROLEFLIX_SERVERLESS and DATABASE_URL:
         CACHES = {"default": {"BACKEND": "django.core.cache.backends.db.DatabaseCache", "LOCATION": "roleflix_cache"}}
     else:
         CACHES = {"default": {"BACKEND": "django.core.cache.backends.filebased.FileBasedCache", "LOCATION": DATA_DIR / "cache"}}
@@ -108,12 +104,12 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
-if ROLEFLIX_SERVERLESS and not ROLEFLIX_DEMO:
+if ROLEFLIX_SERVERLESS and BLOB_CONNECTED:
     STORAGES = {
         "default": {"BACKEND": "roleflix.storage.BlobStorage"},
         "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
     }
-elif not DEBUG and not ROLEFLIX_DEMO:
+elif not DEBUG:
     STORAGES = {
         "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
         "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
@@ -159,7 +155,7 @@ ROLEFLIX_MIN_FREE_DISK = 0 if DEBUG or ROLEFLIX_SERVERLESS else 5 * 1024 ** 3
 # Cada envio e cada resposta da Vercel param em 4,5 MB. Fica uma folga para o resto do pedido.
 ROLEFLIX_MAX_REQUEST_FILE = 4 * 1024 ** 2 if ROLEFLIX_SERVERLESS else None
 # O plano grátis do Blob bloqueia tudo por até 30 dias ao passar de 1 GB: o site para de aceitar envios antes disso.
-ROLEFLIX_MAX_MEDIA_BYTES = 900 * 1024 ** 2 if ROLEFLIX_SERVERLESS and not ROLEFLIX_DEMO else None
+ROLEFLIX_MAX_MEDIA_BYTES = 900 * 1024 ** 2 if ROLEFLIX_SERVERLESS and BLOB_CONNECTED else None
 
 # Em desenvolvimento, os e-mails aparecem no terminal em vez de exigir um servidor SMTP.
 if DEBUG or (ROLEFLIX_SERVERLESS and not ROLEFLIX_EMAIL_ENABLED):
@@ -173,10 +169,6 @@ else:
     EMAIL_TIMEOUT = 15
     DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "Rolêflix <nao-responda@localhost>")
     SERVER_EMAIL = DEFAULT_FROM_EMAIL
-
-if ROLEFLIX_DEMO:
-    # Cada instância tem seu próprio banco temporário: a sessão precisa ficar no navegador.
-    SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
 
 if HTTPS:
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")  # O Caddy é o único que fala com o Django.

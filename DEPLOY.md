@@ -108,7 +108,7 @@ Depois que o site estiver no ar, o GitHub pode atualizar o servidor sozinho. Fic
 4. Em **Variables**, crie `VPS_HOST` com o IP do servidor.
 5. Apague a chave do servidor: `rm /root/deploy_key`.
 
-A partir daí, cada `git push` publica o site. Acompanhe em **Actions**, no GitHub. Se o site passar para o VPS, desligue a Vercel para ela não publicar a demonstração junto.
+A partir daí, cada `git push` publica o site. Acompanhe em **Actions**, no GitHub. Se o site passar para o VPS, desligue a Vercel para não ter dois sites no ar.
 
 ## Login com Google (opcional)
 

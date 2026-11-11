@@ -8,7 +8,7 @@ import zipfile
 from allauth.account.views import PasswordResetView
 from django.conf import settings
 from django.contrib import messages
-from django.contrib.auth import login, logout
+from django.contrib.auth import logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
 from django.db import transaction
@@ -18,9 +18,10 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.formats import date_format
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.text import slugify
 from django.views.decorators.http import require_POST
-from . import accounts, covers, demo, homepage, retrospective, tickets, trailers
+from . import accounts, covers, homepage, retrospective, tickets, trailers
 from .adapters import EmailNaoEnviado
 from .forms import AlbumForm, AvatarForm, CollectionForm, MediaUploadForm, ProfileForm, FriendSearchForm, TicketForm, TrailerForm, media_kind
 from .models import Album, AlbumParticipant, AlbumView, Collection, CoverDesign, Favorite, FriendRequest, MediaItem, Notification, Profile, Ticket, Trailer
@@ -63,19 +64,27 @@ def home(request):
 def tutorial_is_hidden(user):
     return Profile.objects.filter(user=user, tutorial_hidden=True).exists()
 
+def safe_next(request, value):
+    """Só aceita voltar para uma página do próprio site."""
+    if value and url_has_allowed_host_and_scheme(value, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        return value
+    return reverse("home")
+
 @login_required
 def tutorial(request):
-    return render(request, "roleflix/tutorial.html", {"tutorial_hidden": tutorial_is_hidden(request.user)})
+    return render(request, "roleflix/tutorial.html", {
+        "tutorial_hidden": tutorial_is_hidden(request.user),
+        "next_url": safe_next(request, request.GET.get("next")),
+        "max_photo_mb": settings.ROLEFLIX_MAX_REQUEST_FILE // 1024 ** 2 if settings.ROLEFLIX_MAX_REQUEST_FILE else None,
+    })
 
 @login_required
 @require_POST
 def hide_tutorial(request):
-    """Tira o convite do início; o tutorial segue disponível no perfil."""
+    """Só este botão para de abrir o tutorial a cada login. Ele segue disponível no perfil."""
     Profile.objects.update_or_create(user=request.user, defaults={"tutorial_hidden": True})
-    if request.POST.get("to") == "profile":
-        messages.success(request, "Tutorial concluído! Ele fica sempre disponível aqui no seu perfil.")
-        return redirect("profile", username=request.user.username)
-    return redirect("home")
+    messages.success(request, "Pronto, o tutorial não abre mais sozinho. Ele fica sempre disponível no seu perfil.")
+    return redirect(safe_next(request, request.POST.get("next")))
 
 @login_required
 def collection_detail(request, slug):
@@ -710,13 +719,6 @@ def delete_account(request):
         "album_count": Album.objects.filter(owner=request.user).count(),
         "media_count": MediaItem.objects.filter(uploaded_by=request.user).exclude(album__owner=request.user).count(),
     })
-
-@require_POST
-def demo_login(request):
-    if not settings.ROLEFLIX_DEMO:
-        raise Http404
-    login(request, demo.seed(), backend="django.contrib.auth.backends.ModelBackend")
-    return redirect("home")
 
 def privacy(request):
     return render(request, "roleflix/privacy.html", {"contact_email": settings.ROLEFLIX_CONTACT_EMAIL})

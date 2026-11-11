@@ -30,8 +30,7 @@ from PIL import Image
 from vercel.blob import sync as sdk_blob
 from config.conexoes import reconhecer
 
-from . import accounts, covers, demo, homepage, tickets, trailers
-from .middleware import DemoSetupMiddleware
+from . import accounts, covers, homepage, tickets, trailers
 from .models import Album, AlbumParticipant, Collection, CoverDesign, Favorite, FriendRequest, MediaItem, Notification, Profile, Ticket, Trailer
 
 TMP = tempfile.mkdtemp()
@@ -82,7 +81,7 @@ class ContaTests(Base):
 
     def test_cadastro_entra_na_conta(self):
         r = self.client.post("/cadastro/", {"first_name": "Nathan Gabriel", "email": "Novo@X.com", "password1": SENHA, "password2": SENHA})
-        self.assertRedirects(r, "/")
+        self.assertRedirects(r, "/ajuda/?next=%2F")
         user = self.client.get("/").context["user"]
         self.assertEqual((user.first_name, user.email), ("Nathan Gabriel", "novo@x.com"))
         self.assertNotIn(" ", user.username)
@@ -1800,10 +1799,10 @@ class TutorialTests(Base):
     def test_tutorial_exige_login(self):
         self.assertEqual(self.client.get("/ajuda/").status_code, 302)
 
-    def test_tutorial_tem_sete_etapas(self):
+    def test_tutorial_tem_nove_etapas(self):
         self.client.force_login(self.a)
         r = self.client.get("/ajuda/")
-        self.assertContains(r, 'class="tutorial-step"', count=7)
+        self.assertContains(r, 'class="tutorial-step"', count=9)
         self.assertContains(r, "Concluir tutorial")
         self.assertContains(r, "Não mostrar novamente")
 
@@ -1820,13 +1819,49 @@ class TutorialTests(Base):
         self.assertRedirects(self.client.post("/ajuda/ocultar/", {"to": "home"}), "/")
         self.assertNotContains(self.client.get("/"), "Novo por aqui?")
 
-    def test_concluir_volta_ao_perfil_e_tutorial_continua_aberto(self):
+    def test_depois_de_dispensar_o_tutorial_continua_no_perfil(self):
         self.client.force_login(self.a)
-        self.assertRedirects(self.client.post("/ajuda/ocultar/", {"to": "profile"}), "/perfil/ana/")
-        self.assertNotContains(self.client.get("/"), "Novo por aqui?")
+        self.client.post("/ajuda/ocultar/")
         r = self.client.get("/ajuda/")
         self.assertEqual(r.status_code, 200)
         self.assertNotContains(r, "Não mostrar novamente")
+
+    def test_tutorial_ensina_os_ingressos(self):
+        self.client.force_login(self.a)
+        r = self.client.get("/ajuda/")
+        for texto in ("Gerando ingressos", "Gerar ingresso", "Cinema clássico", "PDF", "pré-estreia", "Meus ingressos"):
+            self.assertContains(r, texto)
+
+    def entrar(self, **extra):
+        return self.client.post("/accounts/login/", {"login": "ana@x.com", "password": SENHA, **extra})
+
+    def test_login_abre_o_tutorial_toda_vez(self):
+        for _ in range(2):
+            self.assertRedirects(self.entrar(), "/ajuda/?next=%2F", fetch_redirect_response=False)
+            self.client.logout()
+
+    def test_concluir_ou_pular_nao_esconde_o_tutorial(self):
+        self.entrar()
+        r = self.client.get("/ajuda/?next=/amigos/")
+        self.assertContains(r, 'href="/amigos/" data-tutorial-finish')
+        self.assertContains(r, "Pular por agora")
+        self.client.logout()
+        self.assertRedirects(self.entrar(), "/ajuda/?next=%2F", fetch_redirect_response=False)
+
+    def test_login_vindo_de_outra_pagina_volta_para_ela_depois_do_tutorial(self):
+        r = self.entrar(next="/amigos/")
+        self.assertRedirects(r, "/ajuda/?next=%2Famigos%2F", fetch_redirect_response=False)
+
+    def test_nao_mostrar_novamente_para_de_abrir_no_login(self):
+        self.entrar()
+        self.assertRedirects(self.client.post("/ajuda/ocultar/", {"next": "/amigos/"}), "/amigos/")
+        self.client.logout()
+        self.assertRedirects(self.entrar(), "/", fetch_redirect_response=False)
+
+    def test_tutorial_nao_leva_para_outro_site(self):
+        self.client.force_login(self.a)
+        self.assertContains(self.client.get("/ajuda/?next=https://mal.com/"), 'href="/" data-tutorial-finish')
+        self.assertRedirects(self.client.post("/ajuda/ocultar/", {"next": "//mal.com"}), "/", fetch_redirect_response=False)
 
     def test_dispensar_nao_afeta_outra_pessoa(self):
         self.client.force_login(self.a)
@@ -2493,61 +2528,19 @@ class FalhaDeEmailTests(Base):
         self.assertTrue(User.objects.filter(email="nova@x.com").exists())
 
 
-class DemonstracaoTests(Base):
-    @override_settings(ROLEFLIX_DEMO=True)
-    def test_cadastro_fechado_em_todas_as_entradas(self):
-        for caminho in ("/cadastro/", "/accounts/signup/"):
-            self.assertContains(self.client.get(caminho), "Cadastro fechado na demonstração")
-            dados = {"first_name": "Novo", "email": "novo@x.com", "password1": SENHA, "password2": SENHA}
-            self.assertContains(self.client.post(caminho, dados), "Cadastro fechado na demonstração")
-        self.assertFalse(User.objects.filter(email="novo@x.com").exists())
-
-    @override_settings(ROLEFLIX_DEMO=True)
-    def test_paginas_nao_oferecem_cadastro_e_mostram_a_conta_de_teste(self):
-        r = self.client.get("/accounts/login/")
-        self.assertNotContains(r, "Criar cadastro")
-        self.assertNotContains(r, "Criar conta")
-        self.assertNotContains(self.client.get("/"), "/cadastro/")
-        self.assertContains(r, demo.DEMO_EMAIL)
-        self.assertContains(r, demo.DEMO_PASSWORD)
-
-    @override_settings(ROLEFLIX_DEMO=True)
-    def test_conta_de_teste_entra_com_email_e_senha(self):
-        senha = demo.seed().password
-        r = self.client.post("/accounts/login/", {"login": demo.DEMO_EMAIL, "password": demo.DEMO_PASSWORD})
-        self.assertEqual(r.status_code, 302)
-        self.assertEqual(self.client.get("/").context["user"].username, demo.DEMO_USERNAME)
-        # Se o login regravasse a senha, a sessão deixaria de valer nas outras instâncias.
-        self.assertEqual(User.objects.get(username=demo.DEMO_USERNAME).password, senha)
-
-    @override_settings(ROLEFLIX_DEMO=True)
-    def test_conta_de_teste_tem_a_mesma_senha_em_todas_as_instancias(self):
-        primeira = demo.seed().password
-        User.objects.filter(username__in=["demo", "beatriz", "leo"]).delete()
-        self.assertEqual(demo.seed().password, primeira)
-
-    def test_fora_da_demonstracao_o_cadastro_continua_aberto_e_sem_conta_de_teste(self):
+class SemDemonstracaoTests(Base):
+    def test_cadastro_aberto_e_sem_conta_de_teste(self):
         self.assertContains(self.client.get("/cadastro/"), "Criar sua conta")
         r = self.client.get("/accounts/login/")
         self.assertContains(r, "Criar cadastro")
-        self.assertNotContains(r, demo.DEMO_PASSWORD)
+        self.assertNotContains(r, "roleflix-teste")
 
-    def test_fora_da_vercel_nao_existe_faixa_nem_entrada(self):
-        self.assertNotContains(self.client.get("/"), "Demonstração.")
-        self.assertEqual(self.client.post("/demo/entrar/").status_code, 404)
-
-    @override_settings(ROLEFLIX_DEMO=True)
-    def test_entrar_cria_os_exemplos_uma_vez_so(self):
-        self.assertContains(self.client.get("/"), "Entrar na demonstração")
-        self.assertRedirects(self.client.post("/demo/entrar/"), "/")
+    @override_settings(ROLEFLIX_SERVERLESS=True)
+    def test_na_vercel_nao_existe_faixa_nem_entrada_de_demonstracao(self):
         r = self.client.get("/")
-        self.assertContains(r, "Não envie fotos pessoais")
-        self.assertNotContains(r, "Entrar na demonstração")
-        self.assertTrue(r.context["featured"])
-        total = Album.objects.count()
-        self.client.logout()
-        self.client.post("/demo/entrar/")
-        self.assertEqual(Album.objects.count(), total)
+        self.assertNotContains(r, "Demonstração")
+        self.assertContains(r, "Criar conta")
+        self.assertEqual(self.client.post("/demo/entrar/").status_code, 404)
 
     @override_settings(ROLEFLIX_SERVERLESS=True)
     def test_trailer_fica_desligado(self):
@@ -2560,57 +2553,6 @@ class DemonstracaoTests(Base):
         popen.assert_not_called()
         self.assertContains(r, "trailers ficam desligados")
         self.assertFalse(album.trailers.exists())
-
-
-class PreparoDaDemonstracaoTests(Base):
-    def setUp(self):
-        super().setUp()
-        DemoSetupMiddleware.ready = False
-        self.addCleanup(setattr, DemoSetupMiddleware, "ready", False)
-
-    def test_fora_da_demonstracao_nao_prepara_nada(self):
-        with patch("roleflix.demo.prepare") as prepare:
-            self.client.get("/")
-        prepare.assert_not_called()
-
-    @override_settings(ROLEFLIX_DEMO=True)
-    def test_prepara_na_primeira_visita_e_so_uma_vez(self):
-        with patch("roleflix.demo.prepare") as prepare:
-            self.assertEqual(self.client.get("/").status_code, 200)
-            self.client.get("/termos/")
-        prepare.assert_called_once()
-
-    @override_settings(ROLEFLIX_DEMO=True)
-    def test_falha_no_preparo_mostra_a_causa_e_tenta_de_novo(self):
-        with patch("roleflix.demo.prepare", side_effect=OSError("disco cheio")):
-            with self.assertLogs("roleflix.middleware", level="ERROR"):
-                r = self.client.get("/")
-        self.assertEqual(r.status_code, 503)
-        self.assertIn("OSError: disco cheio", r.content.decode())
-        with patch("roleflix.demo.prepare"):
-            self.assertEqual(self.client.get("/").status_code, 200)
-
-    @override_settings(ROLEFLIX_DEMO=True)
-    def test_sem_a_imagem_da_paisagem_a_demonstracao_sobe(self):
-        with patch("roleflix.demo.finders.find", return_value=None):
-            demo.seed()
-        self.assertTrue(Album.objects.filter(title="Guaratuba 2026").exists())
-
-
-class DemonstracaoEntreInstanciasTests(Base):
-    @override_settings(ROLEFLIX_DEMO=True)
-    def test_conta_e_arquivos_sao_iguais_em_qualquer_instancia(self):
-        demo.seed()
-        senha = User.objects.get(username="demo").password
-        capas = sorted(Album.objects.values_list("cover", flat=True))
-        for album in Album.objects.all():
-            album.cover.storage.delete(album.cover.name)
-        for item in MediaItem.objects.all():
-            item.file.storage.delete(item.file.name)
-        User.objects.filter(username__in=["demo", "beatriz", "leo"]).delete()
-        demo.seed()
-        self.assertEqual(User.objects.get(username="demo").password, senha)
-        self.assertEqual(sorted(Album.objects.values_list("cover", flat=True)), capas)
 
 
 class RecuperarSenhaTests(Base):
@@ -2683,10 +2625,8 @@ class RecuperarSenhaTests(Base):
         with patch("django.core.mail.backends.locmem.EmailBackend.send_messages", side_effect=OSError("sem conexão")):
             self.assertRedirects(self.pedir("ninguem@x.com"), "/accounts/password/reset/done/")
 
-    @override_settings(ROLEFLIX_DEMO=True, ROLEFLIX_SERVERLESS=True)
-    def test_demonstracao_avisa_quando_nao_envia_email(self):
-        DemoSetupMiddleware.ready = True
-        self.addCleanup(setattr, DemoSetupMiddleware, "ready", False)
+    @override_settings(ROLEFLIX_SERVERLESS=True)
+    def test_na_vercel_avisa_quando_nao_envia_email(self):
         self.assertContains(self.client.get("/accounts/password/reset/"), "envio de e-mails está desligado")
 
 
@@ -2912,7 +2852,7 @@ class NuvemTests(Base):
 class ModosDoSiteTests(TestCase):
     def configuracao(self, **env):
         base = {k: v for k, v in os.environ.items() if k not in ("VERCEL", "DATABASE_URL", "BLOB_READ_WRITE_TOKEN", "BLOB_STORE_ID", "EMAIL_HOST")}
-        codigo = ("import json;from config import settings as s;print(json.dumps([s.ROLEFLIX_DEMO,s.DATABASES['default']['ENGINE'],"
+        codigo = ("import json;from config import settings as s;print(json.dumps([hasattr(s,'STORAGES') and s.STORAGES['default']['BACKEND'].endswith('BlobStorage'),s.DATABASES['default']['ENGINE'],"
                   "s.DATABASES['default'].get('OPTIONS',{}),s.STORAGES['default']['BACKEND'] if hasattr(s,'STORAGES') else '',"
                   "s.ACCOUNT_EMAIL_VERIFICATION,s.CACHES['default']['BACKEND'].rsplit('.',1)[-1]]))")
         r = subprocess.run([sys.executable, "-c", codigo], capture_output=True, text=True, check=True, cwd=settings.BASE_DIR,
@@ -2921,14 +2861,14 @@ class ModosDoSiteTests(TestCase):
 
     URL = "postgresql://eu:se%40nha@ep-x-pooler.neon.tech/neondb?sslmode=require"
 
-    def test_so_o_banco_ou_so_a_loja_continua_em_demonstracao(self):
-        self.assertTrue(self.configuracao(VERCEL="1")[0])
-        self.assertTrue(self.configuracao(VERCEL="1", DATABASE_URL=self.URL)[0])
+    def test_loja_de_arquivos_so_e_usada_quando_ligada(self):
+        self.assertFalse(self.configuracao(VERCEL="1")[0])
+        self.assertFalse(self.configuracao(VERCEL="1", DATABASE_URL=self.URL)[0])
         self.assertTrue(self.configuracao(VERCEL="1", BLOB_READ_WRITE_TOKEN="t")[0])
 
     def test_banco_e_loja_ligados_guardam_de_verdade(self):
-        demo_, engine, opcoes, storage, verificacao, cache = self.configuracao(VERCEL="1", DATABASE_URL=self.URL, BLOB_STORE_ID="s")
-        self.assertFalse(demo_)
+        blob, engine, opcoes, storage, verificacao, cache = self.configuracao(VERCEL="1", DATABASE_URL=self.URL, BLOB_STORE_ID="s")
+        self.assertTrue(blob)
         self.assertEqual(engine, "django.db.backends.postgresql")
         self.assertEqual(opcoes, {"sslmode": "require"})
         self.assertEqual(storage, "roleflix.storage.BlobStorage")
@@ -2936,8 +2876,8 @@ class ModosDoSiteTests(TestCase):
         self.assertEqual(cache, "DatabaseCache")
 
     def test_aceita_variaveis_com_prefixo_da_integracao(self):
-        self.assertFalse(self.configuracao(VERCEL="1", STORAGE_DATABASE_URL=self.URL, STORAGE_BLOB_READ_WRITE_TOKEN="t")[0])
-        self.assertFalse(self.configuracao(VERCEL="1", POSTGRES_URL=self.URL, BLOB_STORE_ID="s")[0])
+        for env in ({"STORAGE_DATABASE_URL": self.URL, "STORAGE_BLOB_READ_WRITE_TOKEN": "t"}, {"POSTGRES_URL": self.URL, "BLOB_STORE_ID": "s"}):
+            self.assertEqual(self.configuracao(VERCEL="1", **env)[:2], [True, "django.db.backends.postgresql"])
 
     def test_nome_exato_vence_o_prefixo(self):
         env = {"DATABASE_URL": "certo", "STORAGE_DATABASE_URL": "outro", "POSTGRES_PRISMA_URL": "x"}
@@ -2949,10 +2889,6 @@ class ModosDoSiteTests(TestCase):
         env = {"STORAGE_DATABASE_URL_UNPOOLED": "direta", "STORAGE_DATABASE_URL": "pool", "NEON_POSTGRES_URL_NON_POOLING": ""}
         reconhecer(env)
         self.assertEqual((env["DATABASE_URL"], env["DATABASE_URL_UNPOOLED"]), ("pool", "direta"))
-
-    @override_settings(ROLEFLIX_DEMO=True, ROLEFLIX_DEMO_FALTA=["arquivos"])
-    def test_demonstracao_indica_o_que_falta_conectar(self):
-        self.assertContains(self.client.get("/accounts/login/"), 'data-falta="arquivos"')
 
     def test_com_email_ligado_exige_confirmacao(self):
         self.assertEqual(self.configuracao(VERCEL="1", DATABASE_URL=self.URL, BLOB_STORE_ID="s", EMAIL_HOST="smtp.x")[4], "mandatory")

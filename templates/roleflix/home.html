@@ -2,7 +2,7 @@
 {% block main_class %}{% if user.is_authenticated %} wide{% endif %}{% endblock %}
 {% block content %}
 {% if not user.is_authenticated %}
-<section class="hero"><div class="hero-content"><p class="eyebrow">BEM-VINDO AO ROLÊFLIX</p><h1>As melhores histórias<br>não ficam só na galeria.</h1><p>Crie álbuns cinematográficos e compartilhe suas memórias com os amigos.</p><a class="primary" href="{% if demo_mode %}{% url 'account_login' %}{% else %}{% url 'signup' %}{% endif %}">Começar agora</a> <a class="secondary" href="{% url 'account_login' %}">Entrar</a></div></section>
+<section class="hero"><div class="hero-content"><p class="eyebrow">BEM-VINDO AO ROLÊFLIX</p><h1>As melhores histórias<br>não ficam só na galeria.</h1><p>Crie álbuns cinematográficos e compartilhe suas memórias com os amigos.</p><a class="primary" href="{% url 'signup' %}">Começar agora</a> <a class="secondary" href="{% url 'account_login' %}">Entrar</a></div></section>
 {% elif featured %}
 <section class="home-hero"{% if featured.cover %} style="background-image:url('{{ featured.backdrop.url }}')"{% endif %}>
   <div class="home-hero-text">
@@ -26,7 +26,7 @@
 </section>
 {% endif %}
 {% if user.is_authenticated %}
-{% if show_tutorial %}<section class="home-section home-slim"><div class="tutorial-banner"><span><b>Novo por aqui?</b> Aprenda a usar o Rolêflix em 7 etapas.</span><span class="tutorial-banner-actions"><a class="primary" href="{% url 'tutorial' %}">Começar tutorial</a><form method="post" action="{% url 'hide_tutorial' %}">{% csrf_token %}<input type="hidden" name="to" value="home"><button class="text-button" type="submit">Não mostrar novamente</button></form></span></div></section>{% endif %}
+{% if show_tutorial %}<section class="home-section home-slim"><div class="tutorial-banner"><span><b>Novo por aqui?</b> Aprenda a usar o Rolêflix em 9 etapas.</span><span class="tutorial-banner-actions"><a class="primary" href="{% url 'tutorial' %}">Começar tutorial</a><form method="post" action="{% url 'hide_tutorial' %}">{% csrf_token %}<button class="text-button" type="submit">Não mostrar novamente</button></form></span></div></section>{% endif %}
 {% if retro_year %}<section class="home-section home-slim"><a class="retro-banner{% if retro_ready %} ready{% endif %}" href="{% url 'retrospective' retro_year %}"><span><small class="eyebrow">{% if retro_ready %}JÁ ESTÁ PRONTA{% else %}ATÉ AGORA{% endif %}</small><b>Sua retrospectiva {{ retro_year }}</b></span><span class="retro-go">▶ Ver</span></a></section>{% endif %}
 
 {% if continue_exploring %}{% include "roleflix/home_row.html" with title="Continue de onde parou" albums=continue_exploring more_url="" %}{% endif %}

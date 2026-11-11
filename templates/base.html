@@ -50,12 +50,11 @@
       <a class="nav-button" href="{% url 'create_album' %}" aria-label="Novo álbum">＋<span class="nav-button-label"> Novo álbum</span></a>
     {% else %}
       <a class="guest-link" href="{% url 'account_login' %}">Entrar</a>
-      {% if not demo_mode %}<a class="nav-button" href="{% url 'signup' %}">Criar conta</a>{% endif %}
+      <a class="nav-button" href="{% url 'signup' %}">Criar conta</a>
     {% endif %}
   </div>
   {% endwith %}
 </header>
-{% if demo_mode %}<aside class="demo-banner" data-falta="{{ demo_falta }}"><span><b>Demonstração.</b> Tudo o que você criar aqui pode sumir a qualquer momento. Não envie fotos pessoais.</span>{% if not user.is_authenticated %}<form method="post" action="{% url 'demo_login' %}">{% csrf_token %}<button class="primary" type="submit">Entrar na demonstração</button></form>{% endif %}</aside>{% endif %}
 <main class="container{% block main_class %}{% endblock %}">
 {% if messages %}{% for message in messages %}<div class="message">{{ message }}</div>{% endfor %}{% endif %}
 {% block content %}{% endblock %}

@@ -1,6 +1,6 @@
 # Rolêflix na Vercel com dados permanentes
 
-O site só sai do modo demonstração quando o banco e os arquivos estão ligados. Com um só, nada muda.
+O site precisa do banco (Neon) e dos arquivos (Blob) ligados para guardar contas, álbuns e fotos.
 
 ## Ligar
 

@@ -1,4 +1,4 @@
-"""Roda na publicação da Vercel: prepara o banco do Neon. Sem ele, o site segue como demonstração e não há o que fazer."""
+"""Roda na publicação da Vercel: prepara o banco do Neon. Sem ele, não há o que preparar."""
 import os
 
 import django
