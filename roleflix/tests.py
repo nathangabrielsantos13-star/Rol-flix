@@ -87,6 +87,14 @@ class ContaTests(Base):
         self.assertEqual((user.first_name, user.email), ("Nathan Gabriel", "novo@x.com"))
         self.assertNotIn(" ", user.username)
 
+    def test_login_continua_depois_de_fechar_o_navegador(self):
+        self.client.post("/cadastro/", {"first_name": "Novo", "email": "lembra@x.com", "password1": SENHA, "password2": SENHA})
+        self.client.logout()
+        r = self.client.post("/accounts/login/", {"login": "lembra@x.com", "password": SENHA})
+        self.assertEqual(r.status_code, 302)
+        self.assertFalse(self.client.session.get_expire_at_browser_close())
+        self.assertGreater(self.client.cookies["sessionid"]["max-age"], 30 * 24 * 60 * 60)
+
     def test_nomes_iguais_geram_usuarios_diferentes(self):
         for email in ("n1@x.com", "n2@x.com"):
             self.client.post("/cadastro/", {"first_name": "Nathan", "email": email, "password1": SENHA, "password2": SENHA})

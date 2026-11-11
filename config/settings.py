@@ -130,6 +130,9 @@ AUTHENTICATION_BACKENDS = [
 LOGIN_REDIRECT_URL = "/"
 LOGOUT_REDIRECT_URL = "/"
 ACCOUNT_LOGIN_METHODS = {"email"}
+# Sem isto, quem não marca "Lembrar de mim" sai da conta ao fechar o navegador, e no celular isso acontece toda hora.
+ACCOUNT_SESSION_REMEMBER = True
+SESSION_COOKIE_AGE = 60 * 24 * 60 * 60  # 60 dias
 # Sem isto, os links de e-mail e do Google sairiam em http, mesmo com o site em https.
 ACCOUNT_DEFAULT_HTTP_PROTOCOL = "https" if HTTPS else "http"
 ACCOUNT_EMAIL_SUBJECT_PREFIX = ""
