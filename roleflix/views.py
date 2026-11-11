@@ -755,6 +755,10 @@ def edit_profile(request):
 
 class RecuperarSenhaView(PasswordResetView):
     def form_valid(self, form):
+        if settings.ROLEFLIX_SERVERLESS and not settings.ROLEFLIX_EMAIL_ENABLED:
+            # Sem serviço de e-mail, dizer "enviamos" deixaria a pessoa esperando um link que nunca chega.
+            form.add_error(None, "No momento, o envio de e-mails está desligado.")
+            return self.form_invalid(form)
         try:
             return super().form_valid(form)
         except EmailNaoEnviado:

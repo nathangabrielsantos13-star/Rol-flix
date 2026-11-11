@@ -2626,8 +2626,13 @@ class RecuperarSenhaTests(Base):
             self.assertRedirects(self.pedir("ninguem@x.com"), "/accounts/password/reset/done/")
 
     @override_settings(ROLEFLIX_SERVERLESS=True)
-    def test_na_vercel_avisa_quando_nao_envia_email(self):
-        self.assertContains(self.client.get("/accounts/password/reset/"), "envio de e-mails está desligado")
+    def test_na_vercel_sem_email_nao_finge_que_enviou(self):
+        r = self.client.get("/accounts/password/reset/")
+        self.assertContains(r, "envio de e-mails está desligado")
+        self.assertNotContains(r, "Enviar link")
+        r = self.client.post("/accounts/password/reset/", {"email": "ana@x.com"})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(len(mail.outbox), 0)
 
 
 @override_settings(SOCIALACCOUNT_PROVIDERS=GOOGLE)
